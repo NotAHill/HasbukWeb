@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Hasbuk Web</title>
+
+
+    <style>
+
+    </style>
+
+
+  </head>
+  <body>
+    <div id="pageContainer">
+      <div id="titleBar">
+        <div id="titleText">Hasbuk</div>
+        <button id="settingsButton">Settings</button>
+      </div>
+      <div id="ayahInfo">
+        <div id="juzNum">Juz</div>
+        <div id="surahNum">Surah</div>
+        <div id="ayahNum">Ayah</div>
+      </div>
+      <div id="arabicAyah">
+        Arabic Goes Here
+      </div>
+      <div id="englishAyah">
+        English Goes Here
+      </div>
+      <div id="ayahButtons">
+        <button id="prevButton">Prev</button>
+        <button id="randomButton">Select Random Ayah</button>
+        <button id="nextButton">Next</button>
+      </div>
+    </div>
+
+
+    
+    <!-- <script>
+      // javascript that runs on page load to get juz info into quran.json
+      window.addEventListener('load', () => {
+        Promise.all([
+          fetch('quran_en.json').then(res => res.json()),
+          fetch('juz.json').then(res => res.json())
+        ])
+        .then(([surah_data, juz_data_raw]) => {
+
+          // preprocess the juz_data_raw to remove strs
+          juz_data = juz_data_raw.map(juz => ({
+            id: Number(juz.index),
+            start: {
+              id: Number(juz.start.index),
+              verse: Number(juz.start.verse.replace("verse_", "")),
+            },
+            end: {
+              id: Number(juz.end.index),
+              verse: Number(juz.end.verse.replace("verse_", "")),
+            }
+          }));
+
+          // Add Juz info to each ayah
+          juz_data.forEach((juz) => {
+            surah_data.slice(juz.start.id - 1, juz.end.id).forEach((surah) => {
+              if (surah.id === juz.start.id && surah.id === juz.end.id) {
+                surah.verses.slice(juz.start.verse - 1, juz.end.verse).forEach(ayah => ayah.juz=juz.id);
+              } else if (surah.id === juz.start.id) {
+                surah.verses.slice(juz.start.verse - 1).forEach(ayah => ayah.juz=juz.id);
+              } else if (surah.id === juz.end.id) {
+                surah.verses.slice(0, juz.end.verse).forEach(ayah => ayah.juz=juz.id);
+              } else {
+                surah.verses.forEach(ayah=>ayah.juz=juz.id);
+              }
+            })
+          })
+
+          // download the json
+          const blob = new Blob([JSON.stringify(surah_data, null, 2)], { type: 'application/json' }); const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = 'quran.json';
+          a.click();
+          URL.revokeObjectURL(url);
+        })
+      })
+    </script> -->
+  </body>
+</html>
