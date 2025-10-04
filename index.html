@@ -66,45 +66,53 @@
         });
       }
 
-        // id INTEGER PRIMARY KEY,
-        // surah_id INTEGER,
-        // verse_number INTEGER,
-        // english_text TEXT,
-        // arabic_text TEXT,
-        // juz_number INTEGER,
-        // page_number INTEGER
-
       const randomAyahButton = document.getElementById('randomButton');
+      const nextAyahButton = document.getElementById('nextButton');
+      const prevAyahButton = document.getElementById('prevButton');
+
       const arabicDiv = document.getElementById('arabicAyah');
       const englishDiv = document.getElementById('englishAyah');
       const juzDiv = document.getElementById('juzNum');
       const surahDiv = document.getElementById('surahNum');
       const ayahDiv = document.getElementById('ayahNum');
+      let currentVerseId = null;
 
-      randomAyahButton.addEventListener('click', () => {
-
-        const totalVerses = 6236;
-        const randomId = getRandomInt(1, totalVerses);
-
+      function displayVerse(verseId) {
         let verseResult = db.exec(`
-          SELECT *
+          SELECT arabic_text, english_text, juz_number, verse_number, english_name AS surah_name
           FROM verses
-          WHERE id=${randomId}
+            JOIN surahs USING (surah_id)
+          WHERE id=${verseId}
         `);
 
         verseResult = mapSQLResult(verseResult)[0];
 
         arabicDiv.textContent = verseResult.arabic_text;
-        console.log("hello");
         englishDiv.textContent = verseResult.english_text;
-        console.log("hello2");
         juzDiv.textContent = `Juz ${verseResult.juz_number}`;
-        surahDiv.textContent = `Surah ${verseResult.surah_id}`;
+        surahDiv.textContent = `Surah ${verseResult.surah_name}`;
         ayahDiv.textContent = `Ayah ${verseResult.verse_number}`;
+      }
 
+      randomAyahButton.addEventListener('click', () => {
+        const totalVerses = 6236;
+        currentVerseId = getRandomInt(1, totalVerses);
+        displayVerse(currentVerseId);
       });
 
+      prevAyahButton.addEventListener('click', () => {
+        if (!currentVerseId || currentVerseId == 1) {
+          return;
+        }
+        displayVerse(--currentVerseId);
+      });
       
+      nextAyahButton.addEventListener('click', () => {
+        if (!currentVerseId || currentVerseId == 6236) {
+          return;
+        }
+        displayVerse(++currentVerseId);
+      });
 
 
     </script>
