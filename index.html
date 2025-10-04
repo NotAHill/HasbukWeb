@@ -8,7 +8,7 @@
 
     </style>
 
-
+    <script src="https://unpkg.com/@quranjs/api/dist/index.umd.min.js"></script>
   </head>
   <body>
     <div id="pageContainer">
@@ -33,8 +33,133 @@
         <button id="nextButton">Next</button>
       </div>
     </div>
+  
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.13.0/sql-wasm.js"></script>
+    <script>
+
+      let db;
+
+      initSqlJs({ locateFile: file => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.13.0/${file}` })
+        .then(SQL => {
+          // Fetch the database file
+          fetch('quran.db')
+            .then(res => res.arrayBuffer())
+            .then(buffer => {
+              db = new SQL.Database(new Uint8Array(buffer));
+            });
+        });
+
+      function getRandomInt(min, max) {
+        return Math.floor(Math.random() * (max - min + 1)) + min;
+      }
+
+      function mapSQLResult(result) {
+        if (!result || result.length === 0) return [];
+
+        const columns = result[0].columns;
+        const values = result[0].values;
+
+        return values.map(row => {
+          const obj = {};
+          row.forEach((val, i) => obj[columns[i]] = val);
+          return obj;
+        });
+      }
+
+        // id INTEGER PRIMARY KEY,
+        // surah_id INTEGER,
+        // verse_number INTEGER,
+        // english_text TEXT,
+        // arabic_text TEXT,
+        // juz_number INTEGER,
+        // page_number INTEGER
+
+      const randomAyahButton = document.getElementById('randomButton');
+      const arabicDiv = document.getElementById('arabicAyah');
+      const englishDiv = document.getElementById('englishAyah');
+      const juzDiv = document.getElementById('juzNum');
+      const surahDiv = document.getElementById('surahNum');
+      const ayahDiv = document.getElementById('ayahNum');
+
+      randomAyahButton.addEventListener('click', () => {
+
+        const totalVerses = 6236;
+        const randomId = getRandomInt(1, totalVerses);
+
+        let verseResult = db.exec(`
+          SELECT *
+          FROM verses
+          WHERE id=${randomId}
+        `);
+
+        verseResult = mapSQLResult(verseResult)[0];
+
+        arabicDiv.textContent = verseResult.arabic_text;
+        console.log("hello");
+        englishDiv.textContent = verseResult.english_text;
+        console.log("hello2");
+        juzDiv.textContent = `Juz ${verseResult.juz_number}`;
+        surahDiv.textContent = `Surah ${verseResult.surah_id}`;
+        ayahDiv.textContent = `Ayah ${verseResult.verse_number}`;
+
+      });
+
+      
 
 
+    </script>
+
+    <!-- <script>
+      // gets ayah info from quran.js api
+
+      const {quran} = window.quranjsApi;
+
+      window.addEventListener('load', () => {
+        fetch('quran.json')
+          .then(res => res.json())
+          .then((surah_data) => {
+            const allPromises = [];
+
+            surah_data.forEach((surah) => {
+              let pagination_number = 1;
+
+
+              function fetchPage() {
+                return quran.v4.verses.findByChapter(String(surah.id), { page: pagination_number })
+                  .then(res => {
+                    if (!res) {
+                      return;
+                    }
+                    
+                    res.forEach((ayah) => {
+                      console.log("update made")
+                      surah.verses[ayah.verseNumber - 1].pageNumber = ayah.pageNumber;
+                    });
+
+                    pagination_number++;
+                    return fetchPage();
+                  })
+                  .catch(err => console.error(err));
+              }
+
+              allPromises.push(fetchPage());
+            });
+
+            Promise.all(allPromises)
+              .then(() => {
+                const blob = new Blob([JSON.stringify(surah_data, null, 2)], { type: 'application/json' }); const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'quran.json';
+                a.click();
+                URL.revokeObjectURL(url);
+              })
+          })
+          .catch(err => console.error(err));
+      })
+          
+      
+    </script> -->
     
     <!-- <script>
       // javascript that runs on page load to get juz info into quran.json

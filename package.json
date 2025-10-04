@@ -1,0 +1,23 @@
+{
+  "name": "hasbukweb",
+  "version": "1.0.0",
+  "main": "convert.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/NotAHill/HasbukWeb.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/NotAHill/HasbukWeb/issues"
+  },
+  "homepage": "https://github.com/NotAHill/HasbukWeb#readme",
+  "keywords": [],
+  "description": "",
+  "dependencies": {
+    "sqlite3": "^5.1.7"
+  }
+}
