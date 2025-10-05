@@ -5,7 +5,6 @@
 
 
     <style>
-
     </style>
 
     <script src="https://unpkg.com/@quranjs/api/dist/index.umd.min.js"></script>
@@ -15,6 +14,17 @@
       <div id="titleBar">
         <div id="titleText">Hasbuk</div>
         <button id="settingsButton">Settings</button>
+        <div id="settingsPopup" style="display: none;">
+          <label>
+            <input type="checkbox" id="hideBracketsCheckbox">
+            Hide Square Brackets
+          </label>
+          <label>
+            <input type="checkbox" id="hideAyahInfoCheckbox">
+            Hide Ayah Info
+          </label>
+
+        </div>
       </div>
       <div id="ayahInfo">
         <div id="juzNum">Juz</div>
@@ -36,6 +46,22 @@
   
     <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.13.0/sql-wasm.js"></script>
     <script>
+      const randomAyahButton = document.getElementById('randomButton');
+      const nextAyahButton = document.getElementById('nextButton');
+      const prevAyahButton = document.getElementById('prevButton');
+
+      const arabicDiv = document.getElementById('arabicAyah');
+      const englishDiv = document.getElementById('englishAyah');
+      const juzDiv = document.getElementById('juzNum');
+      const surahDiv = document.getElementById('surahNum');
+      const ayahDiv = document.getElementById('ayahNum');
+
+      const settingsButton = document.getElementById('settingsButton');
+      const settingsPopup = document.getElementById('settingsPopup');
+      const hideBrackets = document.getElementById('hideBracketsCheckbox');
+      const hideAyahInfo = document.getElementById('hideAyahInfoCheckbox');
+
+      let currentVerseId = 1;
 
       let db;
 
@@ -46,6 +72,7 @@
             .then(res => res.arrayBuffer())
             .then(buffer => {
               db = new SQL.Database(new Uint8Array(buffer));
+              displayVerse(currentVerseId);
             });
         });
 
@@ -66,16 +93,22 @@
         });
       }
 
-      const randomAyahButton = document.getElementById('randomButton');
-      const nextAyahButton = document.getElementById('nextButton');
-      const prevAyahButton = document.getElementById('prevButton');
+      function preprocessText(text) {
+        // Remove all text inside square brackets (non-greedy)
+        let result = text;
 
-      const arabicDiv = document.getElementById('arabicAyah');
-      const englishDiv = document.getElementById('englishAyah');
-      const juzDiv = document.getElementById('juzNum');
-      const surahDiv = document.getElementById('surahNum');
-      const ayahDiv = document.getElementById('ayahNum');
-      let currentVerseId = null;
+        if (hideBrackets.checked) {
+          result = text.replace(/\[.*?\]/g, '');
+        }
+        
+        // Replace multiple spaces with a single space
+        result = result.replace(/\s+/g, ' ');
+        
+        // Trim leading and trailing spaces
+        result = result.trim();
+
+        return result;
+      }
 
       function displayVerse(verseId) {
         let verseResult = db.exec(`
@@ -88,11 +121,32 @@
         verseResult = mapSQLResult(verseResult)[0];
 
         arabicDiv.textContent = verseResult.arabic_text;
-        englishDiv.textContent = verseResult.english_text;
-        juzDiv.textContent = `Juz ${verseResult.juz_number}`;
-        surahDiv.textContent = `Surah ${verseResult.surah_name}`;
-        ayahDiv.textContent = `Ayah ${verseResult.verse_number}`;
+        englishDiv.textContent = preprocessText(verseResult.english_text);
+
+        if (hideAyahInfo.checked) {
+          juzDiv.textContent = `Juz ??`;
+          surahDiv.textContent = `Surah ??`;
+          ayahDiv.textContent = `Ayah ??`;
+        } else {
+          juzDiv.textContent = `Juz ${verseResult.juz_number}`;
+          surahDiv.textContent = `Surah ${verseResult.surah_name}`;
+          ayahDiv.textContent = `Ayah ${verseResult.verse_number}`;
+        }
       }
+
+      settingsButton.addEventListener('click', () => {
+        const isOpen = settingsPopup.style.display === 'flex';
+        settingsPopup.style.display = isOpen ? 'none' : 'flex';
+      });
+
+      hideBrackets.addEventListener('change', () => displayVerse(currentVerseId));
+      hideAyahInfo.addEventListener('change', () => displayVerse(currentVerseId));
+
+      // window.addEventListener('click', (e) => {
+      //   if (e.target == settingsPopup) {
+
+      //   }
+      // })
 
       randomAyahButton.addEventListener('click', () => {
         const totalVerses = 6236;
