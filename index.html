@@ -5,6 +5,10 @@
 
 
     <style>
+      #settingsPopup {
+        display: flex;
+        flex-direction: column;
+      }
     </style>
 
     <script src="https://unpkg.com/@quranjs/api/dist/index.umd.min.js"></script>
@@ -23,7 +27,12 @@
             <input type="checkbox" id="hideAyahInfoCheckbox">
             Hide Ayah Info
           </label>
-
+          <button id="addSurahRangeButton">
+            Add Surah Range
+          </button>
+          <button id="addJuzRangeButton">
+            Add Juz Range
+          </button>
         </div>
       </div>
       <div id="ayahInfo">
@@ -61,7 +70,17 @@
       const hideBrackets = document.getElementById('hideBracketsCheckbox');
       const hideAyahInfo = document.getElementById('hideAyahInfoCheckbox');
 
+      // const juzStartSelect = document.getElementById('juzStartSelect');
+      // const surahStartSelect = document.getElementById('surahStartSelect');
+      // const ayahStartSelect = document.getElementById('ayahStartSelect');
+      // // const juzEndSelect = document.getElementById('juzEndSelect');
+      // const surahEndSelect = document.getElementById('surahEndSelect');
+      // const ayahEndSelect = document.getElementById('ayahEndSelect');
+
       let currentVerseId = 1;
+
+      // let selectStartVerse = 1;
+      // let selectEndVerse = 6236;
 
       let db;
 
@@ -75,6 +94,42 @@
               displayVerse(currentVerseId);
             });
         });
+
+      // function initialiseSurahRanges() {
+      //   let all_surahs = db.exec(`
+      //     SELECT surah_id, english_name
+      //     FROM surahs
+      //   `);
+
+      //   all_surahs = mapSQLResult(all_surahs);
+
+      //   all_surahs.forEach(surah => {
+      //     const option = document.createElement('option');
+      //     option.value = surah.surah_id;
+      //     option.textContent = `${surah.surah_id} - ${surah.english_name}`
+      //     surahStartSelect.appendChild(option);
+      //     surahEndSelect.appendChild(option.cloneNode(true));
+      //   });
+        
+      //   populateAyahRanges();
+      // }
+
+      // function populateAyahRanges() {
+      //   let verseResult = db.exec(`
+      //     SELECT juz_number, verse_number, surah_id AS surah_number
+      //     FROM verses
+      //     WHERE id IN (${selectStartVerse}, ${selectEndVerse})
+      //   `);
+
+      //   let [start, end] = mapSQLResult(verseResult);
+      //   juzStartSelect.selectedIndex = start.juz_number - 1;
+      //   surahStartSelect.selectedIndex = start.surah_number - 1;
+      //   ayahStartSelect.selectedIndex = start.verse_number - 1;
+
+      //   juzEndSelect.selectedIndex = end.juz_number - 1;
+      //   surahEndSelect.selectedIndex = end.surah_number - 1;
+      //   ayahEndSelect.selectedIndex = end.verse_number - 1;
+      // }
 
       function getRandomInt(min, max) {
         return Math.floor(Math.random() * (max - min + 1)) + min;
@@ -141,12 +196,6 @@
 
       hideBrackets.addEventListener('change', () => displayVerse(currentVerseId));
       hideAyahInfo.addEventListener('change', () => displayVerse(currentVerseId));
-
-      // window.addEventListener('click', (e) => {
-      //   if (e.target == settingsPopup) {
-
-      //   }
-      // })
 
       randomAyahButton.addEventListener('click', () => {
         const totalVerses = 6236;
