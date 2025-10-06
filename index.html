@@ -10,8 +10,6 @@
         flex-direction: column;
       }
     </style>
-
-    <script src="https://unpkg.com/@quranjs/api/dist/index.umd.min.js"></script>
   </head>
   <body>
     <div id="pageContainer">
@@ -70,23 +68,15 @@
       const hideBrackets = document.getElementById('hideBracketsCheckbox');
       const hideAyahInfo = document.getElementById('hideAyahInfoCheckbox');
 
-      // const juzStartSelect = document.getElementById('juzStartSelect');
-      // const surahStartSelect = document.getElementById('surahStartSelect');
-      // const ayahStartSelect = document.getElementById('ayahStartSelect');
-      // // const juzEndSelect = document.getElementById('juzEndSelect');
-      // const surahEndSelect = document.getElementById('surahEndSelect');
-      // const ayahEndSelect = document.getElementById('ayahEndSelect');
+      const addSurahRangeButton = document.getElementById('addSurahRangeButton');
+      const addJuzRangeButton = document.getElementById('addJuzRangeButton');
 
       let currentVerseId = 1;
-
-      // let selectStartVerse = 1;
-      // let selectEndVerse = 6236;
 
       let db;
 
       initSqlJs({ locateFile: file => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.13.0/${file}` })
         .then(SQL => {
-          // Fetch the database file
           fetch('quran.db')
             .then(res => res.arrayBuffer())
             .then(buffer => {
@@ -95,41 +85,9 @@
             });
         });
 
-      // function initialiseSurahRanges() {
-      //   let all_surahs = db.exec(`
-      //     SELECT surah_id, english_name
-      //     FROM surahs
-      //   `);
+      function addSurahRange() {
 
-      //   all_surahs = mapSQLResult(all_surahs);
-
-      //   all_surahs.forEach(surah => {
-      //     const option = document.createElement('option');
-      //     option.value = surah.surah_id;
-      //     option.textContent = `${surah.surah_id} - ${surah.english_name}`
-      //     surahStartSelect.appendChild(option);
-      //     surahEndSelect.appendChild(option.cloneNode(true));
-      //   });
-        
-      //   populateAyahRanges();
-      // }
-
-      // function populateAyahRanges() {
-      //   let verseResult = db.exec(`
-      //     SELECT juz_number, verse_number, surah_id AS surah_number
-      //     FROM verses
-      //     WHERE id IN (${selectStartVerse}, ${selectEndVerse})
-      //   `);
-
-      //   let [start, end] = mapSQLResult(verseResult);
-      //   juzStartSelect.selectedIndex = start.juz_number - 1;
-      //   surahStartSelect.selectedIndex = start.surah_number - 1;
-      //   ayahStartSelect.selectedIndex = start.verse_number - 1;
-
-      //   juzEndSelect.selectedIndex = end.juz_number - 1;
-      //   surahEndSelect.selectedIndex = end.surah_number - 1;
-      //   ayahEndSelect.selectedIndex = end.verse_number - 1;
-      // }
+      }
 
       function getRandomInt(min, max) {
         return Math.floor(Math.random() * (max - min + 1)) + min;
@@ -149,17 +107,13 @@
       }
 
       function preprocessText(text) {
-        // Remove all text inside square brackets (non-greedy)
         let result = text;
 
         if (hideBrackets.checked) {
           result = text.replace(/\[.*?\]/g, '');
         }
         
-        // Replace multiple spaces with a single space
         result = result.replace(/\s+/g, ' ');
-        
-        // Trim leading and trailing spaces
         result = result.trim();
 
         return result;
@@ -188,6 +142,138 @@
           ayahDiv.textContent = `Ayah ${verseResult.verse_number}`;
         }
       }
+
+      let ranges = [];
+
+      function populateSurahSelect(selectElem, selectLast = false) {
+        selectElem.innerHTML = '';
+        let result = db.exec("SELECT surah_id AS id, english_name FROM surahs;");
+        if (!result.length) return;
+        result = mapSQLResult(result);
+        
+        result.forEach((surah) => {
+          const option = document.createElement('option');
+          option.value = surah.id;
+          option.textContent = `${surah.id}-${surah.english_name}`;
+          selectElem.appendChild(option);
+        });
+        
+        if (selectLast) {
+          selectElem.selectedIndex = selectElem.options.length - 1;
+        }
+      }
+      
+      function populateAyahSelect(selectElem, surah_id, selectLast = false) {
+        selectElem.innerHTML = '';
+        let result = db.exec(`
+          SELECT verse_count
+          FROM surahs
+          WHERE surah_id=${surah_id}
+        `);
+
+        result = mapSQLResult(result)[0];
+        
+        for (let i = 1; i <= result.verse_count; i++) {
+          const option = document.createElement('option');
+          option.value = i;
+          option.textContent = i;
+          selectElem.appendChild(option);
+        }
+
+        if (selectLast) {
+          selectElem.selectedIndex = selectElem.options.length - 1;
+        }
+      }
+
+      function populateJuzSelect(selectElem, selectLast = false) {
+        selectElem.innerHTML = '';
+        for (let i = 1; i <= 30; i++) {
+          const option = document.createElement('option');
+          option.value = i;
+          option.textContent = i;
+          selectElem.appendChild(option);
+        }
+
+        if (selectLast) {
+          selectElem.selectedIndex = selectElem.options.length - 1;
+        }
+      }
+
+      addSurahRangeButton.addEventListener('click', () => {
+        // Create container
+        const div = document.createElement('div');
+        div.style.display = 'flex';
+        div.style.flexDirection = 'row';
+        div.style.gap = '4px';
+        div.style.marginTop = '6px';
+
+        // Add labels and selects
+        div.innerHTML = `
+          From Surah <select class="from-surah"></select>
+          Ayah <select class="from-ayah"></select>
+          To Surah <select class="to-surah"></select>
+          Ayah <select class="to-ayah"></select>
+          <button class="remove-range">✖</button>
+        `;
+
+        // Add it to popup
+        settingsPopup.appendChild(div);
+
+        const fromSurah = div.querySelector('.from-surah');
+        const toSurah = div.querySelector('.to-surah');
+        const fromAyah = div.querySelector('.from-ayah');
+        const toAyah = div.querySelector('.to-ayah');
+
+        // Populate dropdowns
+        populateSurahSelect(fromSurah);
+        populateAyahSelect(fromAyah, fromSurah.value);
+
+        populateSurahSelect(toSurah, true);
+        populateAyahSelect(toAyah, toSurah.value, true);
+
+        // Update Ayah dropdowns when Surah changes
+        fromSurah.addEventListener('change', () => populateAyahSelect(fromAyah, fromSurah.value));
+        toSurah.addEventListener('change', () => populateAyahSelect(toAyah, toSurah.value));
+
+        // Add remove button behavior
+        div.querySelector('.remove-range').addEventListener('click', () => {
+          div.remove();
+        });
+
+
+      });
+
+      // Add Juz Range button
+      addJuzRangeButton.addEventListener('click', () => {
+        const div = document.createElement('div');
+        div.style.display = 'flex';
+        div.style.flexDirection = 'row';
+        div.style.gap = '4px';
+        div.style.marginTop = '6px';
+
+        div.innerHTML = `
+          From Juz
+          <select class="from-juz"></select>
+          To Juz
+          <select class="to-juz"></select>
+          <button class="remove-range">✖</button>
+        `;
+
+        settingsPopup.appendChild(div);
+
+        const fromJuz = div.querySelector('.from-juz');
+        const toJuz = div.querySelector('.to-juz');
+
+        populateJuzSelect(fromJuz);
+        populateJuzSelect(toJuz, true);
+
+        ranges.append
+
+        // Add remove button behavior
+        div.querySelector('.remove-range').addEventListener('click', () => {
+          div.remove();
+        });
+      });
 
       settingsButton.addEventListener('click', () => {
         const isOpen = settingsPopup.style.display === 'flex';
