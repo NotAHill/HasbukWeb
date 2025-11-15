@@ -143,27 +143,46 @@
         }
       }
 
+      /*
+      1) clicking surah and juz adds respective text entry
+      2) intial surah and juz set to min/max respectively
+      3) populate ranges array
+
+      on click:
+      4) make sure min juz/surah <= max juz/surah
+      5) change in ranges
+      
+      
+      */
+
       let ranges = [];
 
-      function populateSurahSelect(selectElem, selectLast = false) {
+      function populateSurahSelect(selectElem, selectedIndex, minSurah, maxSurah) {
         selectElem.innerHTML = '';
-        let result = db.exec("SELECT surah_id AS id, english_name FROM surahs;");
-        if (!result.length) return;
+        let result = db.exec(`
+          SELECT surah_id AS id, english_name
+          FROM surahs
+          WHERE surah_id>=${minSurah ?? 1}
+          AND surah_id<=${maxSurah ?? 114}
+        `);
+
         result = mapSQLResult(result);
         
         result.forEach((surah) => {
           const option = document.createElement('option');
           option.value = surah.id;
-          option.textContent = `${surah.id}-${surah.english_name}`;
+          option.textContent = `${surah.id} - ${surah.english_name}`;
           selectElem.appendChild(option);
         });
-        
-        if (selectLast) {
+
+        if (selectedIndex === -1) {
           selectElem.selectedIndex = selectElem.options.length - 1;
+        } else {
+          selectElem.selectedIndex = selectedIndex;
         }
       }
       
-      function populateAyahSelect(selectElem, surah_id, selectLast = false) {
+      function populateAyahSelect(selectElem, surah_id, selectedIndex, minAyah, maxAyah) {
         selectElem.innerHTML = '';
         let result = db.exec(`
           SELECT verse_count
@@ -173,29 +192,33 @@
 
         result = mapSQLResult(result)[0];
         
-        for (let i = 1; i <= result.verse_count; i++) {
+        for (let i = minAyah ?? 1; i <= maxAyah ?? result.verse_count; i++) {
           const option = document.createElement('option');
           option.value = i;
           option.textContent = i;
           selectElem.appendChild(option);
         }
 
-        if (selectLast) {
+        if (selectedIndex === -1) {
           selectElem.selectedIndex = selectElem.options.length - 1;
+        } else {
+          selectElem.selectedIndex = selectedIndex;
         }
       }
 
-      function populateJuzSelect(selectElem, selectLast = false) {
+      function populateJuzSelect(selectElem, selectedIndex, minJuz, maxJuz) {
         selectElem.innerHTML = '';
-        for (let i = 1; i <= 30; i++) {
+        for (let i = minJuz ?? 1; i <= maxJuz ?? 30; i++) {
           const option = document.createElement('option');
           option.value = i;
           option.textContent = i;
           selectElem.appendChild(option);
         }
 
-        if (selectLast) {
+        if (selectedIndex === -1) {
           selectElem.selectedIndex = selectElem.options.length - 1;
+        } else {
+          selectElem.selectedIndex = selectedIndex;
         }
       }
 
@@ -204,8 +227,6 @@
         const div = document.createElement('div');
         div.style.display = 'flex';
         div.style.flexDirection = 'row';
-        div.style.gap = '4px';
-        div.style.marginTop = '6px';
 
         // Add labels and selects
         div.innerHTML = `
@@ -225,15 +246,38 @@
         const toAyah = div.querySelector('.to-ayah');
 
         // Populate dropdowns
-        populateSurahSelect(fromSurah);
-        populateAyahSelect(fromAyah, fromSurah.value);
+        populateSurahSelect(fromSurah, 0);
+        populateAyahSelect(fromAyah, fromSurah.value, 0);
 
-        populateSurahSelect(toSurah, true);
-        populateAyahSelect(toAyah, toSurah.value, true);
+        populateSurahSelect(toSurah, -1);
+        populateAyahSelect(toAyah, toSurah.value, -1);
 
         // Update Ayah dropdowns when Surah changes
-        fromSurah.addEventListener('change', () => populateAyahSelect(fromAyah, fromSurah.value));
-        toSurah.addEventListener('change', () => populateAyahSelect(toAyah, toSurah.value));
+        fromSurah.addEventListener('change', () => {
+          if (fromSurah.value === toSurah.value) {
+            // If both surahs are the same, add an upper bound
+            populateAyahSelect(fromAyah, fromSurah.value, 0, null, toAyah.value);
+          } else {
+            // Otherwise, reset ayah counter to 0
+            populateAyahSelect(fromAyah, fromSurah.value, 0);
+          }
+
+          // Update lower bound for the toSurah
+          populateSurahSelect(toSurah, toSurah.value - 1, fromSurah.value);
+          if (fromSurah.value === toSurah.value) {
+            // If both surahs are now the same then update the lower bound for ayah
+            populateAyahSelect(toAyah, toSurah.value, toAyah.value - 1, fromAyah.value);
+          }
+        });
+
+        toSurah.addEventListener('change', () => {
+          populateAyahSelect(toAyah, toSurah.value);
+
+          populateSurahSelect(fromSurah, null, toSurah.value, true);
+          if (fromSurah.value === toSurah.value) {
+            populateAyahSelect(fromSurah, toSurah.value, null, toAyah.value, true);
+          }
+        });
 
         // Add remove button behavior
         div.querySelector('.remove-range').addEventListener('click', () => {
