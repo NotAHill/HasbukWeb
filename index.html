@@ -201,11 +201,13 @@
       #ayahInfo {
         display: flex;
         justify-content: space-around;
+        align-items: center;
         padding: 16px;
         background: #f8f9fa;
         border-bottom: 1px solid #e9ecef;
         flex-wrap: wrap;
-        gap: 12px;
+        gap: 16px;
+        position: relative;
       }
 
       #ayahInfo > div {
@@ -214,9 +216,30 @@
         font-weight: 500;
       }
 
+      #toggleAyahInfoButton {
+        background: rgba(102, 126, 234, 0.1);
+        border: 1px solid rgba(102, 126, 234, 0.3);
+        color: #667eea;
+        padding: 8px 12px;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 18px;
+        transition: all 0.2s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 40px;
+        height: 40px;
+      }
+
+      #toggleAyahInfoButton:hover {
+        background: rgba(102, 126, 234, 0.2);
+        border-color: rgba(102, 126, 234, 0.5);
+      }
+
       #arabicAyah {
         padding: 32px 24px;
-        font-size: 28px;
+        font-size: 32px;
         line-height: 1.8;
         text-align: right;
         direction: rtl;
@@ -227,7 +250,7 @@
 
       #englishAyah {
         padding: 32px 24px;
-        font-size: 18px;
+        font-size: 22px;
         line-height: 1.6;
         color: #333;
         border-bottom: 1px solid #e9ecef;
@@ -283,60 +306,162 @@
         }
 
         #titleBar {
-          padding: 16px;
+          padding: 14px 16px;
+          flex-wrap: wrap;
         }
 
         #titleText {
-          font-size: 20px;
+          font-size: 18px;
+        }
+
+        #settingsButton {
+          padding: 6px 12px;
+          font-size: 13px;
         }
 
         #settingsPopup {
-          right: 16px;
-          left: 16px;
-          min-width: auto;
+          position: fixed;
+          top: auto;
+          bottom: 0;
+          left: 0;
+          right: 0;
+          margin: 0;
+          border-radius: 16px 16px 0 0;
+          max-width: 100%;
+          min-width: 100%;
+          max-height: 70vh;
+          padding: 16px;
+          box-shadow: 0 -4px 24px rgba(0,0,0,0.2);
+        }
+
+        #ayahInfo {
+          padding: 12px 16px;
+          gap: 8px;
+          font-size: 18px;
+        }
+
+        #ayahInfo > div {
+          font-size: 18px;
         }
 
         #arabicAyah {
-          font-size: 24px;
+          font-size: 36px;
           padding: 24px 16px;
+          line-height: 1.9;
+          min-height: 100px;
         }
 
         #englishAyah {
-          font-size: 16px;
-          padding: 24px 16px;
+          font-size: 26px;
+          padding: 20px 16px;
+          line-height: 1.7;
+          min-height: 80px;
         }
 
         #ayahButtons {
           padding: 16px;
+          gap: 10px;
         }
 
         #ayahButtons button {
-          font-size: 14px;
-          padding: 10px 16px;
+          font-size: 18px;
+          padding: 12px 16px;
+          min-width: 80px;
+        }
+
+        .range-container {
+          padding: 12px;
+          gap: 8px;
         }
 
         .range-row {
           font-size: 12px;
+          gap: 6px;
         }
 
         .range-container select {
           font-size: 12px;
-          padding: 4px 6px;
+          padding: 6px 10px;
+        }
+
+        #settingsPopup label {
+          padding: 10px 8px;
+          font-size: 13px;
+        }
+
+        #settingsPopup > button {
+          padding: 12px 14px;
+          font-size: 13px;
+        }
+
+        .settings-section {
+          padding-top: 10px;
         }
       }
 
       /* Small mobile devices */
       @media (max-width: 480px) {
+        #titleText {
+          font-size: 16px;
+        }
+
+        #arabicAyah {
+          /* font-size: 20px; */
+          padding: 20px 12px;
+        }
+
+        #englishAyah {
+          /* font-size: 14px; */
+          padding: 18px 12px;
+        }
+
         #ayahButtons {
           flex-direction: column;
+          padding: 12px;
+          gap: 8px;
         }
 
         #ayahButtons button {
           width: 100%;
+          padding: 14px 16px;
+          font-size: 15px;
         }
 
         #randomButton {
           order: -1;
+        }
+
+        .range-row {
+          flex-direction: column;
+          align-items: stretch;
+        }
+
+        .range-row select {
+          width: 100%;
+        }
+
+        .range-container .remove-range {
+          margin-left: 0;
+          align-self: flex-end;
+        }
+      }
+
+      /* Very small devices */
+      @media (max-width: 360px) {
+        #arabicAyah {
+          /* font-size: 18px; */
+          padding: 16px 10px;
+        }
+
+        #englishAyah {
+          /* font-size: 13px; */
+          padding: 16px 10px;
+        }
+
+        #ayahInfo {
+          flex-direction: column;
+          align-items: flex-start;
+          gap: 6px;
         }
       }
     </style>
@@ -570,7 +695,6 @@
 
         if (validVerses.length === 0) {
           // Fallback: shouldn't happen, but just in case
-          console.warn("Valid Verses length was 0. Should not happen");
           return getRandomInt(1, 6236);
         }
 
@@ -647,16 +771,19 @@
       addSurahRangeButton.addEventListener('click', () => {
         // Create container
         const div = document.createElement('div');
-        div.style.display = 'flex';
-        div.style.flexDirection = 'row';
+        div.className = 'range-container';
 
         // Add labels and selects
         div.innerHTML = `
-          From Surah <select class="from-surah"></select>
-          Ayah <select class="from-ayah"></select>
-          To Surah <select class="to-surah"></select>
-          Ayah <select class="to-ayah"></select>
-          <button class="remove-range">✖</button>
+          <div class="range-row">
+            From Surah <select class="from-surah"></select>
+            Ayah <select class="from-ayah"></select>
+          </div>
+          <div class="range-row">
+            To Surah <select class="to-surah"></select>
+            Ayah <select class="to-ayah"></select>
+            <button class="remove-range">✖</button>
+          </div>
         `;
 
         // Add it to popup
@@ -687,7 +814,7 @@
         populateSurahSelect(toSurah, -1);
         populateAyahSelect(toAyah, toSurah.value, -1);
 
-        updateRangeIds(); // not sure if this is necessary 
+        updateRangeIds();
 
         // Update Ayah dropdowns when Surah changes
         fromSurah.addEventListener('change', () => {
@@ -698,13 +825,15 @@
           populateAyahSelect(fromAyah, fromSurahVal, 0);
 
           // Update toSurah dropdown to only show valid options (>= fromSurah)
-          const currentToValue = toSurah.value;
+          // Preserve the actual value, not the index
+          const currentToValue = parseInt(toSurah.value);
           populateSurahSelect(toSurah, null, fromSurahVal);
-          toSurah.value = toSurahVal;
-
+          // Restore the value if still valid
+          const newToValue = Math.max(currentToValue, fromSurahVal);
+          toSurah.value = newToValue;
 
           // If both surahs are the same, set constraints on ayahs
-          if (fromSurahVal === toSurahVal) {
+          if (fromSurahVal === parseInt(toSurah.value)) {
             const toAyahVal = parseInt(toAyah.value);
             populateAyahSelect(fromAyah, fromSurahVal, 0, null, toAyahVal);
           }
@@ -720,13 +849,21 @@
           populateAyahSelect(toAyah, toSurahVal, -1);
 
           // Update fromSurah dropdown to only show valid options (<= toSurah)
-          const currentFromIndex = fromSurah.selectedIndex;
-          populateSurahSelect(fromSurah, currentFromIndex, null, toSurahVal);
+          // Preserve the actual value, not the index
+          const currentFromValue = parseInt(fromSurah.value);
+          populateSurahSelect(fromSurah, null, null, toSurahVal);
+          // Restore the value if still valid
+          const newFromValue = Math.min(currentFromValue, toSurahVal);
+          fromSurah.value = newFromValue;
 
           // If both surahs are the same, set constraints on ayahs
-          if (fromSurahVal === toSurahVal) {
+          if (parseInt(fromSurah.value) === toSurahVal) {
             const fromAyahVal = parseInt(fromAyah.value);
-            populateAyahSelect(toAyah, toSurahVal, -1, fromAyahVal);
+            populateAyahSelect(toAyah, toSurahVal, null, fromAyahVal);
+            // Restore toAyah value if still valid
+            const currentToAyahValue = parseInt(toAyah.value);
+            const newToAyahValue = Math.max(currentToAyahValue, fromAyahVal);
+            toAyah.value = newToAyahValue;
           }
 
           updateRangeIds();
@@ -740,7 +877,9 @@
             const fromAyahVal = parseInt(fromAyah.value);
             const currentToAyahValue = parseInt(toAyah.value);
             populateAyahSelect(toAyah, toSurahVal, null, fromAyahVal);
-            toAyah.value = currentToAyahValue;
+            // Restore toAyah value if still valid
+            const newToAyahValue = Math.max(currentToAyahValue, fromAyahVal);
+            toAyah.value = newToAyahValue;
           }
 
           updateRangeIds();
@@ -752,7 +891,11 @@
 
           if (fromSurahVal === toSurahVal) {
             const toAyahVal = parseInt(toAyah.value);
-            populateAyahSelect(fromAyah, fromSurahVal, fromAyah.selectedIndex, null, toAyahVal);
+            const currentFromAyahValue = parseInt(fromAyah.value);
+            populateAyahSelect(fromAyah, fromSurahVal, null, null, toAyahVal);
+            // Restore fromAyah value if still valid
+            const newFromAyahValue = Math.min(currentFromAyahValue, toAyahVal);
+            fromAyah.value = newFromAyahValue;
           }
 
           updateRangeIds();
@@ -771,17 +914,14 @@
       // Add Juz Range button
       addJuzRangeButton.addEventListener('click', () => {
         const div = document.createElement('div');
-        div.style.display = 'flex';
-        div.style.flexDirection = 'row';
-        div.style.gap = '4px';
-        div.style.marginTop = '6px';
+        div.className = 'range-container';
 
         div.innerHTML = `
-          From Juz
-          <select class="from-juz"></select>
-          To Juz
-          <select class="to-juz"></select>
-          <button class="remove-range">✖</button>
+          <div class="range-row">
+            From Juz <select class="from-juz"></select>
+            To Juz <select class="to-juz"></select>
+            <button class="remove-range">✖</button>
+          </div>
         `;
 
         settingsPopup.appendChild(div);
@@ -814,9 +954,12 @@
           const fromJuzVal = parseInt(fromJuz.value);
           
           // Update toJuz to only show valid options (>= fromJuz)
-          const currentToVal = parseInt(toJuz.value);
+          // Preserve the actual value, not the index
+          const currentToValue = parseInt(toJuz.value);
           populateJuzSelect(toJuz, null, fromJuzVal);
-          toJuz.value = currentToVal;
+          // Restore the value if still valid
+          const newToValue = Math.max(currentToValue, fromJuzVal);
+          toJuz.value = newToValue;
 
           updateRangeIds();
         });
@@ -825,8 +968,12 @@
           const toJuzVal = parseInt(toJuz.value);
           
           // Update fromJuz to only show valid options (<= toJuz)
-          const currentFromIndex = fromJuz.selectedIndex;
-          populateJuzSelect(fromJuz, currentFromIndex, null, toJuzVal);
+          // Preserve the actual value, not the index
+          const currentFromValue = parseInt(fromJuz.value);
+          populateJuzSelect(fromJuz, null, null, toJuzVal);
+          // Restore the value if still valid
+          const newFromValue = Math.min(currentFromValue, toJuzVal);
+          fromJuz.value = newFromValue;
 
           updateRangeIds();
         });
