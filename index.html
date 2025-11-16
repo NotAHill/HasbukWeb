@@ -422,7 +422,7 @@
         }
 
         #englishAyah {
-          font-size: 14px;
+          font-size: 16px;
           padding: 18px 12px;
         }
 
@@ -493,11 +493,11 @@
               Hide Ayah Info
             </label>
             <label>
-              <input type="checkbox" id="hideAyahInfoCheckbox">
+              <input type="checkbox" id="hideArabicCheckbox">
               Hide Arabic
             </label>
             <label>
-              <input type="checkbox" id="hideAyahInfoCheckbox">
+              <input type="checkbox" id="hideEnglishCheckbox">
               Hide English
             </label>
             <label>
@@ -544,11 +544,14 @@
       const juzDiv = document.getElementById('juzNum');
       const surahDiv = document.getElementById('surahNum');
       const ayahDiv = document.getElementById('ayahNum');
+      const ayahInfoDiv = document.getElementById('ayahInfo');
 
       const settingsButton = document.getElementById('settingsButton');
       const settingsPopup = document.getElementById('settingsPopup');
       const hideBrackets = document.getElementById('hideBracketsCheckbox');
       const hideAyahInfo = document.getElementById('hideAyahInfoCheckbox');
+      const hideArabic = document.getElementById('hideArabicCheckbox');
+      const hideEnglish = document.getElementById('hideEnglishCheckbox');
       const swapButtons = document.getElementById('swapButtonsCheckbox');
 
       const addSurahRangeButton = document.getElementById('addSurahRangeButton');
@@ -1014,6 +1017,18 @@
 
       hideBrackets.addEventListener('change', () => displayVerse(currentVerseId));
       hideAyahInfo.addEventListener('change', () => displayVerse(currentVerseId));
+
+      ayahInfoDiv.addEventListener('dblclick', () => {
+        hideAyahInfo.checked = !hideAyahInfo.checked;
+        displayVerse(currentVerseId);
+      })
+
+      hideArabic.addEventListener('change', () => {
+        arabicDiv.style.display = hideArabic.checked ? "none" : "block"
+      })
+      hideEnglish.addEventListener('change', () => {
+        englishDiv.style.display = hideEnglish.checked ? "none" : "block"
+      })
       swapButtons.addEventListener('change', () => {
         [prevAyahButton.textContent, nextAyahButton.textContent] = [nextAyahButton.textContent, prevAyahButton.textContent];
       });
