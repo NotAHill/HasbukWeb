@@ -159,22 +159,6 @@
         return mapSQLResult(result)[0];
       }
 
-      function isVerseInRanges(verseId) {
-        // Check surah ranges
-        for (let range of surahRanges) {
-          if (verseId >= range.startId && verseId <= range.endId) {
-            return true;
-          }
-        }
-        // Check juz ranges
-        for (let range of juzRanges) {
-          if (verseId >= range.startId && verseId <= range.endId) {
-            return true;
-          }
-        }
-        return false;
-      }
-
       function getRandomVerseFromRanges() {
         const allRanges = [...surahRanges, ...juzRanges];
         if (allRanges.length === 0) {
