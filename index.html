@@ -2,7 +2,7 @@
 <html>
   <head>
     <title>Hasbuk Web</title>
-
+    <meta charset="UTF-8">
 
     <style>
       #settingsPopup {
@@ -85,10 +85,6 @@
             });
         });
 
-      function addSurahRange() {
-
-      }
-
       function getRandomInt(min, max) {
         return Math.floor(Math.random() * (max - min + 1)) + min;
       }
@@ -143,19 +139,54 @@
         }
       }
 
-      /*
-      1) clicking surah and juz adds respective text entry
-      2) intial surah and juz set to min/max respectively
-      3) populate ranges array
+      let surahRanges = [];
+      let juzRanges = [];
 
-      on click:
-      4) make sure min juz/surah <= max juz/surah
-      5) change in ranges
-      
-      
-      */
+      function getVerseIdFromSurahAyah(surahId, ayahNum) {
+        let result = db.exec(`
+          SELECT id FROM verses
+          WHERE surah_id=${surahId} AND verse_number=${ayahNum}
+        `);
+        return mapSQLResult(result)[0]?.id;
+      }
 
-      let ranges = [];
+      function getVerseIdsFromJuz(juzNum) {
+        let result = db.exec(`
+          SELECT MIN(id) as min_id, MAX(id) as max_id
+          FROM verses
+          WHERE juz_number=${juzNum}
+        `);
+        return mapSQLResult(result)[0];
+      }
+
+      function isVerseInRanges(verseId) {
+        // Check surah ranges
+        for (let range of surahRanges) {
+          if (verseId >= range.startId && verseId <= range.endId) {
+            return true;
+          }
+        }
+        // Check juz ranges
+        for (let range of juzRanges) {
+          if (verseId >= range.startId && verseId <= range.endId) {
+            return true;
+          }
+        }
+        return false;
+      }
+
+      function getRandomVerseFromRanges() {
+        const allRanges = [...surahRanges, ...juzRanges];
+        if (allRanges.length === 0) {
+          return getRandomInt(1, 6236);
+        }
+
+        // Pick a random range
+        const randomRange = allRanges[getRandomInt(0, allRanges.length - 1)];
+        
+        // Pick a random verse within that range
+        return getRandomInt(randomRange.startId, randomRange.endId);
+      }
 
       function populateSurahSelect(selectElem, selectedIndex, minSurah, maxSurah) {
         selectElem.innerHTML = '';
@@ -177,7 +208,7 @@
 
         if (selectedIndex === -1) {
           selectElem.selectedIndex = selectElem.options.length - 1;
-        } else {
+        } else if (selectedIndex !== null && selectedIndex !== undefined) {
           selectElem.selectedIndex = selectedIndex;
         }
       }
@@ -192,7 +223,7 @@
 
         result = mapSQLResult(result)[0];
         
-        for (let i = minAyah ?? 1; i <= maxAyah ?? result.verse_count; i++) {
+        for (let i = minAyah ?? 1; i <= (maxAyah ?? result.verse_count); i++) {
           const option = document.createElement('option');
           option.value = i;
           option.textContent = i;
@@ -201,14 +232,14 @@
 
         if (selectedIndex === -1) {
           selectElem.selectedIndex = selectElem.options.length - 1;
-        } else {
+        } else if (selectedIndex !== null && selectedIndex !== undefined) {
           selectElem.selectedIndex = selectedIndex;
         }
       }
 
       function populateJuzSelect(selectElem, selectedIndex, minJuz, maxJuz) {
         selectElem.innerHTML = '';
-        for (let i = minJuz ?? 1; i <= maxJuz ?? 30; i++) {
+        for (let i = minJuz ?? 1; i <= (maxJuz ?? 30); i++) {
           const option = document.createElement('option');
           option.value = i;
           option.textContent = i;
@@ -217,7 +248,7 @@
 
         if (selectedIndex === -1) {
           selectElem.selectedIndex = selectElem.options.length - 1;
-        } else {
+        } else if (selectedIndex !== null && selectedIndex !== undefined) {
           selectElem.selectedIndex = selectedIndex;
         }
       }
@@ -245,46 +276,105 @@
         const fromAyah = div.querySelector('.from-ayah');
         const toAyah = div.querySelector('.to-ayah');
 
-        // Populate dropdowns
+        // Create range object
+        const rangeObj = {
+          element: div,
+          startId: null,
+          endId: null
+        };
+        surahRanges.push(rangeObj);
+
+        function updateRangeIds() {
+          rangeObj.startId = getVerseIdFromSurahAyah(fromSurah.value, fromAyah.value);
+          rangeObj.endId = getVerseIdFromSurahAyah(toSurah.value, toAyah.value);
+        }
+
+        // Populate dropdowns - start with Al-Fatihah (1) and An-Nas (114)
         populateSurahSelect(fromSurah, 0);
         populateAyahSelect(fromAyah, fromSurah.value, 0);
 
         populateSurahSelect(toSurah, -1);
         populateAyahSelect(toAyah, toSurah.value, -1);
 
+        updateRangeIds(); // not sure if this is necessary 
+
         // Update Ayah dropdowns when Surah changes
         fromSurah.addEventListener('change', () => {
-          if (fromSurah.value === toSurah.value) {
-            // If both surahs are the same, add an upper bound
-            populateAyahSelect(fromAyah, fromSurah.value, 0, null, toAyah.value);
-          } else {
-            // Otherwise, reset ayah counter to 0
-            populateAyahSelect(fromAyah, fromSurah.value, 0);
+          const fromSurahVal = parseInt(fromSurah.value);
+          const toSurahVal = parseInt(toSurah.value);
+
+          // When fromSurah changes to something different, reset fromAyah to start (1)
+          populateAyahSelect(fromAyah, fromSurahVal, 0);
+
+          // Update toSurah dropdown to only show valid options (>= fromSurah)
+          const currentToValue = toSurah.value;
+          populateSurahSelect(toSurah, null, fromSurahVal);
+          toSurah.value = toSurahVal;
+
+
+          // If both surahs are the same, set constraints on ayahs
+          if (fromSurahVal === toSurahVal) {
+            const toAyahVal = parseInt(toAyah.value);
+            populateAyahSelect(fromAyah, fromSurahVal, 0, null, toAyahVal);
           }
 
-          // Update lower bound for the toSurah
-          populateSurahSelect(toSurah, toSurah.value - 1, fromSurah.value);
-          if (fromSurah.value === toSurah.value) {
-            // If both surahs are now the same then update the lower bound for ayah
-            populateAyahSelect(toAyah, toSurah.value, toAyah.value - 1, fromAyah.value);
-          }
+          updateRangeIds();
         });
 
         toSurah.addEventListener('change', () => {
-          populateAyahSelect(toAyah, toSurah.value);
+          const fromSurahVal = parseInt(fromSurah.value);
+          const toSurahVal = parseInt(toSurah.value);
 
-          populateSurahSelect(fromSurah, null, toSurah.value, true);
-          if (fromSurah.value === toSurah.value) {
-            populateAyahSelect(fromSurah, toSurah.value, null, toAyah.value, true);
+          // When toSurah changes to something different, reset toAyah to end
+          populateAyahSelect(toAyah, toSurahVal, -1);
+
+          // Update fromSurah dropdown to only show valid options (<= toSurah)
+          const currentFromIndex = fromSurah.selectedIndex;
+          populateSurahSelect(fromSurah, currentFromIndex, null, toSurahVal);
+
+          // If both surahs are the same, set constraints on ayahs
+          if (fromSurahVal === toSurahVal) {
+            const fromAyahVal = parseInt(fromAyah.value);
+            populateAyahSelect(toAyah, toSurahVal, -1, fromAyahVal);
           }
+
+          updateRangeIds();
+        });
+
+        fromAyah.addEventListener('change', () => {
+          const fromSurahVal = parseInt(fromSurah.value);
+          const toSurahVal = parseInt(toSurah.value);
+
+          if (fromSurahVal === toSurahVal) {
+            const fromAyahVal = parseInt(fromAyah.value);
+            const currentToAyahValue = parseInt(toAyah.value);
+            populateAyahSelect(toAyah, toSurahVal, null, fromAyahVal);
+            toAyah.value = currentToAyahValue;
+          }
+
+          updateRangeIds();
+        });
+
+        toAyah.addEventListener('change', () => {
+          const fromSurahVal = parseInt(fromSurah.value);
+          const toSurahVal = parseInt(toSurah.value);
+
+          if (fromSurahVal === toSurahVal) {
+            const toAyahVal = parseInt(toAyah.value);
+            populateAyahSelect(fromAyah, fromSurahVal, fromAyah.selectedIndex, null, toAyahVal);
+          }
+
+          updateRangeIds();
         });
 
         // Add remove button behavior
         div.querySelector('.remove-range').addEventListener('click', () => {
+          const index = surahRanges.indexOf(rangeObj);
+          if (index > -1) {
+            surahRanges.splice(index, 1);
+          }
           div.remove();
         });
-
-
       });
 
       // Add Juz Range button
@@ -308,13 +398,54 @@
         const fromJuz = div.querySelector('.from-juz');
         const toJuz = div.querySelector('.to-juz');
 
-        populateJuzSelect(fromJuz);
-        populateJuzSelect(toJuz, true);
+        // Create range object
+        const rangeObj = {
+          element: div,
+          startId: null,
+          endId: null
+        };
+        juzRanges.push(rangeObj);
 
-        ranges.append
+        function updateRangeIds() {
+          const fromJuzData = getVerseIdsFromJuz(fromJuz.value);
+          const toJuzData = getVerseIdsFromJuz(toJuz.value);
+          rangeObj.startId = fromJuzData.min_id;
+          rangeObj.endId = toJuzData.max_id;
+        }
+
+        // Populate with Juz 1 and Juz 30 initially
+        populateJuzSelect(fromJuz, 0);
+        populateJuzSelect(toJuz, -1);
+
+        updateRangeIds();
+
+        fromJuz.addEventListener('change', () => {
+          const fromJuzVal = parseInt(fromJuz.value);
+          
+          // Update toJuz to only show valid options (>= fromJuz)
+          const currentToVal = parseInt(toJuz.value);
+          populateJuzSelect(toJuz, null, fromJuzVal);
+          toJuz.value = currentToVal;
+
+          updateRangeIds();
+        });
+
+        toJuz.addEventListener('change', () => {
+          const toJuzVal = parseInt(toJuz.value);
+          
+          // Update fromJuz to only show valid options (<= toJuz)
+          const currentFromIndex = fromJuz.selectedIndex;
+          populateJuzSelect(fromJuz, currentFromIndex, null, toJuzVal);
+
+          updateRangeIds();
+        });
 
         // Add remove button behavior
         div.querySelector('.remove-range').addEventListener('click', () => {
+          const index = juzRanges.indexOf(rangeObj);
+          if (index > -1) {
+            juzRanges.splice(index, 1);
+          }
           div.remove();
         });
       });
@@ -328,8 +459,7 @@
       hideAyahInfo.addEventListener('change', () => displayVerse(currentVerseId));
 
       randomAyahButton.addEventListener('click', () => {
-        const totalVerses = 6236;
-        currentVerseId = getRandomInt(1, totalVerses);
+        currentVerseId = getRandomVerseFromRanges();
         displayVerse(currentVerseId);
       });
 
@@ -349,105 +479,5 @@
 
 
     </script>
-
-    <!-- <script>
-      // gets ayah info from quran.js api
-
-      const {quran} = window.quranjsApi;
-
-      window.addEventListener('load', () => {
-        fetch('quran.json')
-          .then(res => res.json())
-          .then((surah_data) => {
-            const allPromises = [];
-
-            surah_data.forEach((surah) => {
-              let pagination_number = 1;
-
-
-              function fetchPage() {
-                return quran.v4.verses.findByChapter(String(surah.id), { page: pagination_number })
-                  .then(res => {
-                    if (!res) {
-                      return;
-                    }
-                    
-                    res.forEach((ayah) => {
-                      console.log("update made")
-                      surah.verses[ayah.verseNumber - 1].pageNumber = ayah.pageNumber;
-                    });
-
-                    pagination_number++;
-                    return fetchPage();
-                  })
-                  .catch(err => console.error(err));
-              }
-
-              allPromises.push(fetchPage());
-            });
-
-            Promise.all(allPromises)
-              .then(() => {
-                const blob = new Blob([JSON.stringify(surah_data, null, 2)], { type: 'application/json' }); const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = 'quran.json';
-                a.click();
-                URL.revokeObjectURL(url);
-              })
-          })
-          .catch(err => console.error(err));
-      })
-          
-      
-    </script> -->
-    
-    <!-- <script>
-      // javascript that runs on page load to get juz info into quran.json
-      window.addEventListener('load', () => {
-        Promise.all([
-          fetch('quran_en.json').then(res => res.json()),
-          fetch('juz.json').then(res => res.json())
-        ])
-        .then(([surah_data, juz_data_raw]) => {
-
-          // preprocess the juz_data_raw to remove strs
-          juz_data = juz_data_raw.map(juz => ({
-            id: Number(juz.index),
-            start: {
-              id: Number(juz.start.index),
-              verse: Number(juz.start.verse.replace("verse_", "")),
-            },
-            end: {
-              id: Number(juz.end.index),
-              verse: Number(juz.end.verse.replace("verse_", "")),
-            }
-          }));
-
-          // Add Juz info to each ayah
-          juz_data.forEach((juz) => {
-            surah_data.slice(juz.start.id - 1, juz.end.id).forEach((surah) => {
-              if (surah.id === juz.start.id && surah.id === juz.end.id) {
-                surah.verses.slice(juz.start.verse - 1, juz.end.verse).forEach(ayah => ayah.juz=juz.id);
-              } else if (surah.id === juz.start.id) {
-                surah.verses.slice(juz.start.verse - 1).forEach(ayah => ayah.juz=juz.id);
-              } else if (surah.id === juz.end.id) {
-                surah.verses.slice(0, juz.end.verse).forEach(ayah => ayah.juz=juz.id);
-              } else {
-                surah.verses.forEach(ayah=>ayah.juz=juz.id);
-              }
-            })
-          })
-
-          // download the json
-          const blob = new Blob([JSON.stringify(surah_data, null, 2)], { type: 'application/json' }); const url = URL.createObjectURL(blob);
-          const a = document.createElement('a');
-          a.href = url;
-          a.download = 'quran.json';
-          a.click();
-          URL.revokeObjectURL(url);
-        })
-      })
-    </script> -->
   </body>
 </html>
