@@ -159,17 +159,85 @@
         return mapSQLResult(result)[0];
       }
 
-      function getRandomVerseFromRanges() {
+      function isVerseInRanges(verseId) {
+        // Check surah ranges
+        for (let range of surahRanges) {
+          if (verseId >= range.startId && verseId <= range.endId) {
+            return true;
+          }
+        }
+        // Check juz ranges
+        for (let range of juzRanges) {
+          if (verseId >= range.startId && verseId <= range.endId) {
+            return true;
+          }
+        }
+        return false;
+      }
+
+      function getValidPagesFromRanges() {
         const allRanges = [...surahRanges, ...juzRanges];
         if (allRanges.length === 0) {
+          // Return all pages (1-604)
+          return Array.from({length: 604}, (_, i) => i + 1);
+        }
+
+        // Get all unique pages that contain verses within our ranges
+        const validPages = new Set();
+        
+        for (let range of allRanges) {
+          let result = db.exec(`
+            SELECT DISTINCT page_number
+            FROM verses
+            WHERE id >= ${range.startId} AND id <= ${range.endId}
+            ORDER BY page_number
+          `);
+          
+          result = mapSQLResult(result);
+          result.forEach(row => validPages.add(row.page_number));
+        }
+        
+        return Array.from(validPages);
+      }
+
+      function getRandomVerseFromRanges() {
+        const allRanges = [...surahRanges, ...juzRanges];
+        
+        // Get valid pages
+        const validPages = getValidPagesFromRanges();
+        if (validPages.length === 0) {
           return getRandomInt(1, 6236);
         }
 
-        // Pick a random range
-        const randomRange = allRanges[getRandomInt(0, allRanges.length - 1)];
+        // Pick a random page
+        const randomPage = validPages[getRandomInt(0, validPages.length - 1)];
         
-        // Pick a random verse within that range
-        return getRandomInt(randomRange.startId, randomRange.endId);
+        // Get all verses on this page
+        let versesOnPage = db.exec(`
+          SELECT id
+          FROM verses
+          WHERE page_number = ${randomPage}
+          ORDER BY id
+        `);
+        versesOnPage = mapSQLResult(versesOnPage);
+
+        // Filter to only include verses that are within our ranges
+        let validVerses;
+        if (allRanges.length === 0) {
+          validVerses = versesOnPage;
+        } else {
+          validVerses = versesOnPage.filter(v => isVerseInRanges(v.id));
+        }
+
+        if (validVerses.length === 0) {
+          // Fallback: shouldn't happen, but just in case
+          console.warn("Valid Verses length was 0. Should not happen");
+          return getRandomInt(1, 6236);
+        }
+
+        // Pick a random verse from the valid verses on this page
+        const randomVerse = validVerses[getRandomInt(0, validVerses.length - 1)];
+        return randomVerse.id;
       }
 
       function populateSurahSelect(selectElem, selectedIndex, minSurah, maxSurah) {
