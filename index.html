@@ -887,7 +887,7 @@
           // If both surahs are the same, set constraints on ayahs
           if (parseInt(fromSurah.value) === toSurahVal) {
             const fromAyahVal = parseInt(fromAyah.value);
-            populateAyahSelect(toAyah, toSurahVal, null, fromAyahVal);
+            populateAyahSelect(toAyah, toSurahVal, -1, fromAyahVal);
             // Restore toAyah value if still valid
             const currentToAyahValue = parseInt(toAyah.value);
             const newToAyahValue = Math.max(currentToAyahValue, fromAyahVal);
