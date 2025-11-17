@@ -4,7 +4,7 @@ const urlsToCache = [
   '/index.html',
   '/quran.db',
   '/manifest.json',
-  '/KFGQPC Uthmanic Script HAFS Regular.otf',
+  '/UthmanicHafs1Ver18.woff2',
   'https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.13.0/sql-wasm.js',
   'https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.13.0/sql-wasm.wasm',
   'https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Inter:wght@400;500;600&display=swap'
