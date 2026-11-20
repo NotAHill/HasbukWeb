@@ -37,7 +37,7 @@ test('data: counts and well-known locations', () => {
 test('data: 2:72 thin-space fix is applied and no stray spaces remain', () => {
   const text = quran.verse(quran.idFor(2, 72)).arabic;
   assert.ok(!text.includes(' '));
-  assert.ok(text.includes('رَـٰٔت'));
+  assert.ok(text.includes('\u0631\u064E\u0670\u0654\u062A'), 'ra + fatha + dagger alef + hamza, then ta');
   assert.ok(raw.ar.every(t => !/[ -​]/.test(t)));
 });
 
@@ -118,4 +118,12 @@ test('picker: exclusions avoid repeats and report exhaustion', () => {
     seen.add(id);
   }
   assert.equal(pickRandom(quran, ranges, { exclude: seen, rng }).exhausted, true);
+});
+
+test('data: no stray tatweel after letters that cannot join (issue #6)', () => {
+  const stray = /[اأإآٱدذرزوؤةء][ً-ٰٟۖ-ۭ]*ـ/;
+  const bad = raw.ar.map((t, i) => (stray.test(t) ? i + 1 : 0)).filter(Boolean);
+  assert.deepEqual(bad, []);
+  assert.match(quran.verse(quran.idFor(56, 64)).arabic, /\u0632\u0651\u064E\u0670\u0631/); // زَّٰر
+  assert.doesNotMatch(quran.verse(quran.idFor(2, 72)).arabic, /[ ـ]/);
 });

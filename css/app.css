@@ -466,7 +466,14 @@ select {
   background: var(--surface-2);
 }
 
+.range.editing { border-color: var(--accent); background: var(--surface); }
+
 .range-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-weight: 600; font-size: 14px; }
+.range-count { color: var(--muted); font-weight: 400; font-variant-numeric: tabular-nums; }
+.range-summary { margin: 0; font-size: 16px; }
+.range-actions { display: flex; align-items: center; justify-content: flex-end; gap: 8px; }
+.range-actions .secondary.small { margin-right: auto; }
+.primary.small, .secondary.small { min-height: 36px; padding: 6px 14px; font-size: 14px; }
 
 .range-line { display: grid; grid-template-columns: 44px 1fr auto; gap: 8px; align-items: center; font-size: 14px; color: var(--muted); }
 .range-line.single { grid-template-columns: 44px 1fr; }
