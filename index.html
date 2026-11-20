@@ -44,6 +44,15 @@
       </header>
 
       <main>
+        <div id="challengeBar" class="challenge-bar" hidden>
+          <div class="challenge-bar-text">
+            <strong id="challengeProgress"></strong>
+            <span id="challengeLabel"></span>
+          </div>
+          <ol id="challengeDots" class="dots" aria-hidden="true"></ol>
+          <button id="quitChallengeButton" class="link-button danger" type="button">Quit</button>
+        </div>
+
         <section id="card" class="card" aria-live="polite">
           <button id="info" class="info" type="button" title="Tap to hide or show where this ayah is">
             <span class="info-item"><span class="info-label">Surah</span><span id="infoSurah">–</span></span>
@@ -103,7 +112,12 @@
           <button id="nextButton" class="nav-button" type="button" disabled>Next</button>
         </nav>
 
-        <p class="tip">Swipe the card to move between ayahs (or turn pages in page view). Tap the text or the info bar to hide or show it.</p>
+        <button id="challengeButton" class="challenge-button" type="button" aria-haspopup="dialog">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 19c.6-3.2 2.8-5 5.5-5s4.9 1.8 5.5 5"/><circle cx="17" cy="9" r="2.5"/><path d="M15.8 14.2c2.3-.4 4.2 1.1 4.7 3.8"/></svg>
+          Challenge friends
+        </button>
+
+        <p id="tip" class="tip">Swipe the card to move between ayahs (or turn pages in page view). Tap the text or the info bar to hide or show it.</p>
       </main>
 
       <footer class="footer">
@@ -211,6 +225,85 @@
           <li>Juz and page metadata (604-page Madinah mushaf, 1405 AH layout): <a href="https://tanzil.net" target="_blank" rel="noopener">Tanzil</a>, CC BY 3.0.</li>
         </ul>
         <p class="hint">Your settings and scores stay on this device. Hasbuk has no accounts and no tracking. <a href="https://github.com/NotAHill/HasbukWeb" target="_blank" rel="noopener">Source code</a> · <span id="versionText"></span></p>
+      </form>
+    </dialog>
+
+    <dialog id="challengeDialog" class="sheet" aria-labelledby="challengeTitle">
+      <form method="dialog" class="sheet-inner" id="challengeForm">
+        <header class="sheet-header">
+          <h2 id="challengeTitle">Challenge friends</h2>
+          <button class="icon-button" value="close" aria-label="Close" formnovalidate>✕</button>
+        </header>
+        <p class="hint">Everyone gets the same ayahs in the same order, shown the same way. Send the link. Each person who plays adds their score and can send it on.</p>
+        <label class="field stacked">Your name
+          <input id="challengeName" type="text" maxlength="24" autocomplete="nickname" required placeholder="So friends know it's you">
+        </label>
+        <fieldset>
+          <legend>How many ayahs</legend>
+          <div class="segmented">
+            <label><input type="radio" name="size" value="5"><span>5</span></label>
+            <label><input type="radio" name="size" value="10" checked><span>10</span></label>
+            <label><input type="radio" name="size" value="20"><span>20</span></label>
+          </div>
+        </fieldset>
+        <dl class="facts">
+          <div><dt>From</dt><dd id="challengeFrom"></dd></div>
+          <div><dt>Shown</dt><dd id="challengeMode"></dd></div>
+        </dl>
+        <p class="hint">These come from <strong>What to test</strong> and <strong>Settings</strong>.</p>
+        <div class="row wrap">
+          <button id="playChallengeButton" class="primary" type="button">Play it first</button>
+          <button id="sendChallengeButton" class="secondary" type="button">Send without playing</button>
+        </div>
+        <div id="recentChallenges" class="recent" hidden>
+          <h3>Recent challenges</h3>
+          <ul id="recentList"></ul>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="introDialog" class="sheet" aria-labelledby="introTitle">
+      <form method="dialog" class="sheet-inner" id="introForm">
+        <header class="sheet-header">
+          <h2 id="introTitle">You've been challenged</h2>
+          <button class="icon-button" value="close" aria-label="Close" formnovalidate>✕</button>
+        </header>
+        <dl class="facts">
+          <div><dt>Ayahs</dt><dd id="introCount"></dd></div>
+          <div><dt>Shown</dt><dd id="introMode"></dd></div>
+        </dl>
+        <div id="introScores" hidden>
+          <h3>Scores so far</h3>
+          <ol id="introBoard" class="board"></ol>
+        </div>
+        <p class="hint">Recite on from each ayah, check yourself, then tap <strong>Got it</strong> or <strong>Missed</strong>. Getting it with <strong>Next word</strong> hints counts as half.</p>
+        <label class="field stacked">Your name
+          <input id="introName" type="text" maxlength="24" autocomplete="nickname" required>
+        </label>
+        <div class="row wrap">
+          <button id="startChallengeButton" class="primary" type="button">Start</button>
+          <button class="link-button" value="close" formnovalidate>Not now</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="resultsDialog" class="sheet" aria-labelledby="resultsTitle">
+      <form method="dialog" class="sheet-inner">
+        <header class="sheet-header">
+          <h2 id="resultsTitle">Challenge results</h2>
+          <button class="icon-button" value="close" aria-label="Close">✕</button>
+        </header>
+        <p id="resultsSummary" class="results-summary"></p>
+        <ol id="resultsBoard" class="board"></ol>
+        <p id="resultsHint" class="hint"></p>
+        <div class="row wrap">
+          <button id="shareResultsButton" class="primary" type="button">Send to friends</button>
+          <button id="copyResultsButton" class="secondary" type="button">Copy link</button>
+        </div>
+        <details class="review">
+          <summary>The ayahs</summary>
+          <ol id="resultsAyahs"></ol>
+        </details>
       </form>
     </dialog>
 
