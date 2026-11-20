@@ -97,8 +97,12 @@ function render() {
     $('englishTools').hidden = !view.englishHidden;
   }
 
-  $('prevButton').disabled = view.id <= 1;
-  $('nextButton').disabled = view.id >= VERSE_COUNT;
+  // In page view the buttons turn pages, like swiping.
+  const page = v.page;
+  $('prevButton').textContent = pageView ? 'Prev page' : 'Prev';
+  $('nextButton').textContent = pageView ? 'Next page' : 'Next';
+  $('prevButton').disabled = pageView ? page <= 1 : view.id <= 1;
+  $('nextButton').disabled = pageView ? page >= PAGE_COUNT : view.id >= VERSE_COUNT;
   $('grade').hidden = !view.question;
   const running = Boolean(state.run);
   $('controls').hidden = running;
@@ -342,7 +346,7 @@ function toggleInfo() {
   render();
 }
 
-// In page view a swipe turns the page; Prev/Next still move one ayah.
+// In page view, swipes, arrow keys and the Prev/Next buttons turn the page.
 function pageStep(delta) {
   const page = quran.pageOf(view.id) + delta;
   if (page < 1 || page > PAGE_COUNT) return false;
@@ -721,23 +725,69 @@ function surahItems() {
   return quran.surahs.map((s) => [s.id, `${s.id}. ${s.name}`]);
 }
 
+// The range open for editing (the others show as a one-line summary), or -1.
+let editingRange = -1;
+
 function renderRanges() {
   const list = $('rangeList');
   list.replaceChildren(...state.ranges.map((range, index) => buildRange(range, index)));
   renderRangesSummary();
 }
 
+function deleteRange(index) {
+  state.ranges.splice(index, 1);
+  if (editingRange === index) editingRange = -1;
+  else if (editingRange > index) editingRange--;
+  saveState(state);
+  renderRanges();
+}
+
+function editRange(index) {
+  editingRange = index;
+  renderRanges();
+  $('rangeList').children[index]?.querySelector('select')?.focus();
+}
+
+function rangeButton(text, className, onClick) {
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = className;
+  button.textContent = text;
+  button.addEventListener('click', onClick);
+  return button;
+}
+
 function buildRange(range, index) {
   const el = document.createElement('div');
-  el.className = 'range';
-  const title = { surah: 'Surah range', juz: 'Juz range', page: 'Page range' }[range.type];
-  el.innerHTML = `<div class="range-head"><span>${title}</span>
-    <button type="button" class="link-button danger" data-remove>Remove</button></div>`;
-  el.querySelector('[data-remove]').addEventListener('click', () => {
-    state.ranges.splice(index, 1);
-    saveState(state);
-    renderRanges();
-  });
+  const editing = index === editingRange;
+  el.className = editing ? 'range editing' : 'range';
+  const kind = { surah: 'Surah', juz: 'Juz', page: 'Page' }[range.type];
+  const head = document.createElement('div');
+  head.className = 'range-head';
+  const title = document.createElement('span');
+  title.textContent = `Range ${index + 1} · ${kind}`;
+  const count = document.createElement('span');
+  count.className = 'range-count';
+  const n = countVerses(quran, [range]);
+  count.textContent = `${n.toLocaleString()} ${n === 1 ? 'ayah' : 'ayahs'}`;
+  head.append(title, count);
+  el.append(head);
+
+  const actions = document.createElement('div');
+  actions.className = 'range-actions';
+  const del = rangeButton('Delete', 'link-button danger', () => deleteRange(index));
+  del.setAttribute('aria-label', `Delete range ${index + 1}`);
+
+  if (!editing) {
+    const summary = document.createElement('p');
+    summary.className = 'range-summary';
+    summary.textContent = rangeLabel(quran, range);
+    const edit = rangeButton('Edit', 'secondary small', () => editRange(index));
+    edit.setAttribute('aria-label', `Edit range ${index + 1}`);
+    actions.append(edit, del);
+    el.append(summary, actions);
+    return el;
+  }
 
   for (const end of ['from', 'to']) {
     const line = document.createElement('label');
@@ -775,6 +825,13 @@ function buildRange(range, index) {
     }
     el.append(line);
   }
+  const done = rangeButton('✓ Done', 'primary small', () => {
+    editingRange = -1;
+    renderRanges();
+    $('rangeList').children[index]?.querySelector('.secondary')?.focus();
+  });
+  actions.append(del, done);
+  el.append(actions);
   return el;
 }
 
@@ -798,6 +855,7 @@ function addRange(type) {
   } else {
     state.ranges.push({ type, from: v.page, to: v.page });
   }
+  editingRange = state.ranges.length - 1;
   saveState(state);
   renderRanges();
 }
@@ -842,21 +900,21 @@ function setupDialogs() {
     });
   }
   $('settingsButton').addEventListener('click', () => { fillSettingsForm(); openDialog($('settingsDialog')); });
-  $('rangesButton').addEventListener('click', () => { renderRanges(); openDialog($('rangesDialog')); });
+  $('rangesButton').addEventListener('click', () => { editingRange = -1; renderRanges(); openDialog($('rangesDialog')); });
   $('aboutButton').addEventListener('click', () => openDialog($('aboutDialog')));
   $('settingsForm').addEventListener('input', onSettingsInput);
   $('settingsForm').addEventListener('change', onSettingsInput);
   $('addSurahRange').addEventListener('click', () => addRange('surah'));
   $('addJuzRange').addEventListener('click', () => addRange('juz'));
   $('addPageRange').addEventListener('click', () => addRange('page'));
-  $('clearRanges').addEventListener('click', () => { state.ranges = []; saveState(state); renderRanges(); });
+  $('clearRanges').addEventListener('click', () => { state.ranges = []; editingRange = -1; saveState(state); renderRanges(); });
   $('versionText').textContent = `v${APP_VERSION}`;
 }
 
 function setupControls() {
   $('randomButton').addEventListener('click', randomAyah);
-  $('nextButton').addEventListener('click', next);
-  $('prevButton').addEventListener('click', prev);
+  $('nextButton').addEventListener('click', forward);
+  $('prevButton').addEventListener('click', backward);
   $('hintButton').addEventListener('click', hintWord);
   $('revealButton').addEventListener('click', toggleArabic);
   $('revealEnglishButton').addEventListener('click', toggleEnglish);

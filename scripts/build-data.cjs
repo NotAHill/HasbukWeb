@@ -18,12 +18,18 @@ const source = JSON.parse(fs.readFileSync(path.join(root, 'quran.json'), 'utf8')
 // Known defects in the upstream text (risan/quran-json 3.1.2).
 const TEXT_FIXES = [
   {
-    // 2:72 فَٱدَّٰرَٰٔتُمۡ — a stray THIN SPACE (U+2009) splits the word and leaves
-    // the dagger alef + hamza without a base. A tatweel carries them instead,
-    // matching how the same word spells دَّـٰ.
-    surah: 2, ayah: 72, from: ' ', to: 'ـ',
+    // 2:72 فَٱدَّٰرَٰٔتُمۡ — a stray THIN SPACE (U+2009) splits the word.
+    surah: 2, ayah: 72, from: '\u2009', to: '',
   },
 ];
+
+// A tatweel (U+0640) only draws a joining stroke when the letter before it
+// joins forwards. After a letter that never does (ا د ذ ر ز و ء and their
+// hamza forms), the text has one before a dagger alef (e.g. 56:64
+// ٱلزَّـٰرِعُونَ), and it renders as a stray stroke with a gap (GitHub issue
+// #6). Dropping it puts the dagger alef on the letter, as the mushaf has it.
+const NON_JOINING = 'اأإآٱدذرزوؤةء';
+const STRAY_TATWEEL = new RegExp(`([${NON_JOINING}][\\u064B-\\u065F\\u0670\\u06D6-\\u06ED]*)\\u0640`, 'g');
 
 function fail(msg) {
   console.error(`build-data: ${msg}`);
@@ -53,6 +59,7 @@ for (const s of source) {
         text = text.split(fix.from).join(fix.to);
       }
     }
+    text = text.replace(STRAY_TATWEEL, '$1');
     ar.push(text);
     en.push(v.translation.replace(/\s+/g, ' ').trim());
 
