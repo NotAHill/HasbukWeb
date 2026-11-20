@@ -1,1092 +1,194 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
   <head>
-    <title>Hasbuk Web</title>
     <meta charset="UTF-8">
-
-    <!-- PWA Meta Tags -->
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta name="theme-color" content="#667eea">
+    <title>Hasbuk</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="description" content="Test your Quran memorisation: pick a range, get a random ayah, recite on until hasbuk.">
+    <meta name="theme-color" content="#f6f3ec" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#121614" media="(prefers-color-scheme: dark)">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="Hasbuk">
-    <meta name="description" content="Quran reader and memorization tool">
-    
-    <!-- PWA Manifest -->
     <link rel="manifest" href="manifest.json">
-    
-    <!-- Add custom fonts - you can replace these URLs with your preferred fonts -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-
-    <style>
-      * {
-        box-sizing: border-box;
-        margin: 0;
-        padding: 0;
-      }
-
-      @font-face {
-        font-family: "Uthmani";
-        src: url("UthmanicHafs1Ver18.woff2") format("woff2");
-      }
-
-      body {
-        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-        background-color: #f5f5f5;
-        min-height: 100vh;
-        padding: 16px;
-      }
-
-      #pageContainer {
-        max-width: 900px;
-        margin: 0 auto;
-        background: white;
-        border-radius: 12px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-        overflow: hidden;
-      }
-
-      #titleBar {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        padding: 20px;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        position: relative;
-      }
-
-      #titleText {
-        font-size: 24px;
-        font-weight: bold;
-      }
-
-      #settingsButton {
-        background: rgba(255,255,255,0.2);
-        border: 1px solid rgba(255,255,255,0.3);
-        color: white;
-        padding: 8px 16px;
-        border-radius: 6px;
-        cursor: pointer;
-        font-size: 14px;
-        transition: background 0.2s;
-      }
-
-      #settingsButton:hover {
-        background: rgba(255,255,255,0.3);
-      }
-
-      #settingsPopup {
-        display: none;
-        flex-direction: column;
-        gap: 16px;
-        position: absolute;
-        top: 100%;
-        right: 20px;
-        margin-top: 8px;
-        background: white;
-        border-radius: 12px;
-        box-shadow: 0 8px 24px rgba(0,0,0,0.15);
-        padding: 20px;
-        min-width: 320px;
-        max-width: 90vw;
-        max-height: 80vh;
-        overflow-y: auto;
-        z-index: 100;
-        color: #333;
-      }
-
-      #settingsPopup label {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        cursor: pointer;
-        font-size: 14px;
-        padding: 8px;
-        border-radius: 6px;
-        transition: background 0.2s;
-        user-select: none;
-      }
-
-      #settingsPopup label:hover {
-        background: #f8f9fa;
-      }
-
-      #settingsPopup input[type="checkbox"] {
-        width: 20px;
-        height: 20px;
-        cursor: pointer;
-        accent-color: #667eea;
-      }
-
-      #settingsPopup > button {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        border: none;
-        padding: 12px 16px;
-        border-radius: 8px;
-        cursor: pointer;
-        font-size: 14px;
-        font-weight: 500;
-        transition: all 0.2s;
-        box-shadow: 0 2px 4px rgba(102, 126, 234, 0.2);
-      }
-
-      #settingsPopup > button:hover {
-        transform: translateY(-1px);
-        box-shadow: 0 4px 8px rgba(102, 126, 234, 0.3);
-      }
-
-      #settingsPopup > button:active {
-        transform: translateY(0);
-      }
-
-      .settings-section {
-        border-top: 1px solid #e9ecef;
-        padding-top: 12px;
-      }
-
-      .settings-section:first-child {
-        border-top: none;
-        padding-top: 0;
-      }
-
-      .range-container {
-        display: flex;
-        flex-direction: column;
-        gap: 10px;
-        padding: 14px;
-        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-        border-radius: 8px;
-        font-size: 13px;
-        border: 1px solid #dee2e6;
-      }
-
-      .range-row {
-        display: flex;
-        flex-wrap: wrap;
-        align-items: center;
-        gap: 8px;
-      }
-
-      .range-container select {
-        padding: 8px 12px;
-        border: 2px solid #dee2e6;
-        border-radius: 6px;
-        font-size: 13px;
-        background: white;
-        cursor: pointer;
-        transition: all 0.2s;
-        font-family: inherit;
-        outline: none;
-      }
-
-      .range-container select:hover {
-        border-color: #adb5bd;
-      }
-
-      .range-container select:focus {
-        border-color: #667eea;
-        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-      }
-
-      .range-container .remove-range {
-        background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
-        color: white;
-        border: none;
-        padding: 6px 12px;
-        border-radius: 6px;
-        cursor: pointer;
-        font-size: 16px;
-        margin-left: auto;
-        transition: all 0.2s;
-        box-shadow: 0 2px 4px rgba(220, 53, 69, 0.2);
-      }
-
-      .range-container .remove-range:hover {
-        transform: translateY(-1px);
-        box-shadow: 0 4px 8px rgba(220, 53, 69, 0.3);
-      }
-
-      .range-container .remove-range:active {
-        transform: translateY(0);
-      }
-
-      #ayahInfo {
-        display: flex;
-        justify-content: space-around;
-        align-items: center;
-        padding: 16px;
-        background: #f8f9fa;
-        border-bottom: 1px solid #e9ecef;
-        flex-wrap: wrap;
-        gap: 16px;
-        position: relative;
-      }
-
-      #ayahInfo > div {
-        font-size: 14px;
-        color: #666;
-        font-weight: 500;
-      }
-
-      #toggleAyahInfoButton {
-        background: rgba(102, 126, 234, 0.1);
-        border: 1px solid rgba(102, 126, 234, 0.3);
-        color: #667eea;
-        padding: 8px 12px;
-        border-radius: 6px;
-        cursor: pointer;
-        font-size: 18px;
-        transition: all 0.2s;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        min-width: 40px;
-        height: 40px;
-      }
-
-      #toggleAyahInfoButton:hover {
-        background: rgba(102, 126, 234, 0.2);
-        border-color: rgba(102, 126, 234, 0.5);
-      }
-
-      #arabicAyah {
-        padding: 32px 24px;
-        font-size: 32px;
-        line-height: 1.8;
-        text-align: right;
-        direction: rtl;
-        font-family: 'Uthmani', "Amiri", "Traditional Arabic", "Scheherazade", serif;
-        /* font-family: 'Amiri', 'Traditional Arabic', 'Scheherazade', serif; */
-        border-bottom: 1px solid #e9ecef;
-        min-height: 120px;
-      }
-
-      #englishAyah {
-        padding: 32px 24px;
-        font-size: 22px;
-        line-height: 1.6;
-        color: #333;
-        border-bottom: 1px solid #e9ecef;
-        min-height: 100px;
-      }
-
-      #ayahButtons {
-        display: flex;
-        gap: 12px;
-        padding: 20px;
-        justify-content: center;
-        flex-wrap: wrap;
-      }
-
-      #ayahButtons button {
-        background: #667eea;
-        color: white;
-        border: none;
-        padding: 12px 24px;
-        border-radius: 8px;
-        cursor: pointer;
-        font-size: 16px;
-        font-weight: 500;
-        transition: all 0.2s;
-        flex: 1;
-        min-width: 100px;
-      }
-
-      #ayahButtons button:hover {
-        background: #5568d3;
-        transform: translateY(-1px);
-        box-shadow: 0 4px 8px rgba(102, 126, 234, 0.3);
-      }
-
-      #ayahButtons button:active {
-        transform: translateY(0);
-      }
-
-      #randomButton {
-        flex: 2;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      }
-
-      /* Mobile optimizations */
-      @media (max-width: 768px) {
-        body {
-          padding: 0;
-        }
-
-        #pageContainer {
-          border-radius: 0;
-          min-height: 100vh;
-        }
-
-        #titleBar {
-          padding: 14px 16px;
-          flex-wrap: wrap;
-        }
-
-        #titleText {
-          font-size: 18px;
-        }
-
-        #settingsButton {
-          padding: 6px 12px;
-          font-size: 13px;
-        }
-
-        #settingsPopup {
-          position: fixed;
-          top: auto;
-          bottom: 0;
-          left: 0;
-          right: 0;
-          margin: 0;
-          border-radius: 16px 16px 0 0;
-          max-width: 100%;
-          min-width: 100%;
-          max-height: 70vh;
-          padding: 16px;
-          box-shadow: 0 -4px 24px rgba(0,0,0,0.2);
-        }
-
-        #ayahInfo {
-          padding: 12px 16px;
-          gap: 8px;
-          font-size: 18px;
-        }
-
-        #ayahInfo > div {
-          font-size: 18px;
-        }
-
-        #arabicAyah {
-          font-size: 36px;
-          padding: 24px 16px;
-          line-height: 1.9;
-          min-height: 100px;
-        }
-
-        #englishAyah {
-          font-size: 26px;
-          padding: 20px 16px;
-          line-height: 1.7;
-          min-height: 80px;
-        }
-
-        #ayahButtons {
-          padding: 16px;
-          gap: 10px;
-        }
-
-        #ayahButtons button {
-          font-size: 18px;
-          padding: 12px 16px;
-          min-width: 80px;
-        }
-
-        .range-container {
-          padding: 12px;
-          gap: 8px;
-        }
-
-        .range-row {
-          font-size: 12px;
-          gap: 6px;
-        }
-
-        .range-container select {
-          font-size: 12px;
-          padding: 6px 10px;
-        }
-
-        #settingsPopup label {
-          padding: 10px 8px;
-          font-size: 13px;
-        }
-
-        #settingsPopup > button {
-          padding: 12px 14px;
-          font-size: 13px;
-        }
-
-        .settings-section {
-          padding-top: 10px;
-        }
-      }
-
-      /* Small mobile devices */
-      @media (max-width: 480px) {
-        #titleText {
-          font-size: 16px;
-        }
-
-        #arabicAyah {
-          font-size: 28px;
-          padding: 20px 12px;
-        }
-
-        #englishAyah {
-          font-size: 16px;
-          padding: 18px 12px;
-        }
-
-        #ayahButtons {
-          flex-direction: column;
-          padding: 12px;
-          gap: 8px;
-        }
-
-        #ayahButtons button {
-          width: 100%;
-          padding: 14px 16px;
-          font-size: 15px;
-        }
-
-        #randomButton {
-          order: -1;
-        }
-
-        .range-row {
-          flex-direction: column;
-          align-items: stretch;
-        }
-
-        .range-row select {
-          width: 100%;
-        }
-
-        .range-container .remove-range {
-          margin-left: 0;
-          align-self: flex-end;
-        }
-      }
-
-      /* Very small devices */
-      @media (max-width: 360px) {
-        #arabicAyah {
-          /* font-size: 18px; */
-          padding: 16px 10px;
-        }
-
-        #englishAyah {
-          /* font-size: 13px; */
-          padding: 16px 10px;
-        }
-
-        #ayahInfo {
-          flex-direction: column;
-          align-items: flex-start;
-          gap: 6px;
-        }
-      }
-    </style>
+    <link rel="icon" href="icons/favicon-32.png" sizes="32x32" type="image/png">
+    <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+    <link rel="preload" href="fonts/UthmanicHafs1Ver18.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="data/quran.min.json" as="fetch" crossorigin>
+    <link rel="stylesheet" href="css/app.css">
+    <script>
+      // Apply a forced theme before first paint so there's no light/dark flash.
+      try {
+        var t = JSON.parse(localStorage.getItem('hasbuk:v1') || '{}').theme;
+        if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t;
+      } catch (e) {}
+    </script>
   </head>
   <body>
-    <div id="pageContainer">
-      <div id="titleBar">
-        <div id="titleText">Hasbuk</div>
-        <button id="settingsButton">Settings</button>
-        <div id="settingsPopup" style="display: none;">
-          <div class="settings-section">
-            <label>
-              <input type="checkbox" id="hideBracketsCheckbox">
-              Hide Square Brackets
-            </label>
-            <label>
-              <input type="checkbox" id="hideAyahInfoCheckbox">
-              Hide Ayah Info
-            </label>
-            <label>
-              <input type="checkbox" id="hideArabicCheckbox">
-              Hide Arabic
-            </label>
-            <label>
-              <input type="checkbox" id="hideEnglishCheckbox">
-              Hide English
-            </label>
-            <label>
-              <input type="checkbox" id="swapButtonsCheckbox">
-              Swap Prev/Next Buttons
-            </label>
-          </div>
-          <div class="settings-section">
-            <button id="addSurahRangeButton">
-              + Add Surah Range
-            </button>
-            <button id="addJuzRangeButton">
-              + Add Juz Range
-            </button>
-          </div>
+    <div id="app">
+      <header class="topbar">
+        <h1 class="brand">Hasbuk</h1>
+        <div class="topbar-actions">
+          <button id="rangesButton" class="chip-button" type="button" aria-haspopup="dialog">
+            <span id="rangesSummary">Whole Quran</span>
+          </button>
+          <button id="settingsButton" class="icon-button" type="button" aria-label="Settings" aria-haspopup="dialog">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"/></svg>
+          </button>
         </div>
-      </div>
-      <div id="ayahInfo">
-        <div id="juzNum">Juz</div>
-        <div id="surahNum">Surah</div>
-        <div id="ayahNum">Ayah</div>
-      </div>
-      <div id="arabicAyah">
-        Arabic Goes Here
-      </div>
-      <div id="englishAyah">
-        English Goes Here
-      </div>
-      <div id="ayahButtons">
-        <button id="prevButton">Prev</button>
-        <button id="randomButton">Select Random Ayah</button>
-        <button id="nextButton">Next</button>
-      </div>
+      </header>
+
+      <main>
+        <section id="card" class="card" aria-live="polite">
+          <button id="info" class="info" type="button" title="Tap to hide or show where this ayah is">
+            <span class="info-item"><span class="info-label">Surah</span><span id="infoSurah">–</span></span>
+            <span class="info-item"><span class="info-label">Ayah</span><span id="infoAyah">–</span></span>
+            <span class="info-item"><span class="info-label">Juz</span><span id="infoJuz">–</span></span>
+            <span class="info-item"><span class="info-label">Page</span><span id="infoPage">–</span></span>
+          </button>
+
+          <div id="status" class="status">
+            <div class="spinner" aria-hidden="true"></div>
+            <p id="statusText">Loading the Quran…</p>
+            <button id="retryButton" class="secondary" type="button" hidden>Try again</button>
+          </div>
+
+          <div id="arabicBlock" class="text-block" hidden>
+            <p id="arabic" class="arabic" dir="rtl" lang="ar"></p>
+            <div id="arabicTools" class="reveal-tools">
+              <button id="hintButton" class="secondary" type="button">Next word</button>
+              <button id="revealButton" class="secondary" type="button">Show ayah</button>
+            </div>
+          </div>
+
+          <div id="englishBlock" class="text-block" hidden>
+            <p id="english" class="english" lang="en"></p>
+            <div id="englishTools" class="reveal-tools">
+              <button id="revealEnglishButton" class="secondary" type="button">Show translation</button>
+            </div>
+          </div>
+        </section>
+
+        <section id="grade" class="grade" hidden aria-label="How did it go?">
+          <button id="gradeMissed" class="grade-button bad" type="button">Missed</button>
+          <button id="gradeGot" class="grade-button good" type="button">Got it</button>
+        </section>
+
+        <div id="sessionBar" class="session-bar" hidden>
+          <span id="sessionStats"></span>
+          <button id="lastPickButton" class="link-button" type="button" hidden>↶ Last pick</button>
+          <button id="resetSessionButton" class="link-button" type="button">Reset</button>
+        </div>
+
+        <nav id="controls" class="controls" aria-label="Ayah navigation">
+          <button id="prevButton" class="nav-button" type="button" disabled>Prev</button>
+          <button id="randomButton" class="primary" type="button" disabled>Random ayah</button>
+          <button id="nextButton" class="nav-button" type="button" disabled>Next</button>
+        </nav>
+
+        <p class="tip">Swipe the card to move between ayahs. Tap the text or the info bar to hide or show it.</p>
+      </main>
+
+      <footer class="footer">
+        <button id="aboutButton" class="link-button" type="button">About &amp; credits</button>
+        <span aria-hidden="true">·</span>
+        <a href="https://github.com/NotAHill/HasbukWeb/issues" target="_blank" rel="noopener">Feedback</a>
+      </footer>
     </div>
-  
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.13.0/sql-wasm.js"></script>
-    <script>
-      const randomAyahButton = document.getElementById('randomButton');
-      const nextAyahButton = document.getElementById('nextButton');
-      const prevAyahButton = document.getElementById('prevButton');
 
-      const arabicDiv = document.getElementById('arabicAyah');
-      const englishDiv = document.getElementById('englishAyah');
-      const juzDiv = document.getElementById('juzNum');
-      const surahDiv = document.getElementById('surahNum');
-      const ayahDiv = document.getElementById('ayahNum');
-      const ayahInfoDiv = document.getElementById('ayahInfo');
+    <dialog id="rangesDialog" class="sheet" aria-labelledby="rangesTitle">
+      <form method="dialog" class="sheet-inner">
+        <header class="sheet-header">
+          <h2 id="rangesTitle">What to test</h2>
+          <button class="icon-button" value="close" aria-label="Close">✕</button>
+        </header>
+        <p class="hint">Random ayahs come from any of these ranges. With none, the whole Quran is used.</p>
+        <div id="rangeList" class="range-list"></div>
+        <div class="row wrap">
+          <button id="addSurahRange" class="secondary" type="button">+ Surah</button>
+          <button id="addJuzRange" class="secondary" type="button">+ Juz</button>
+          <button id="addPageRange" class="secondary" type="button">+ Page</button>
+          <button id="clearRanges" class="link-button danger" type="button">Clear all</button>
+        </div>
+        <p id="rangeCount" class="hint"></p>
+      </form>
+    </dialog>
 
-      const settingsButton = document.getElementById('settingsButton');
-      const settingsPopup = document.getElementById('settingsPopup');
-      const hideBrackets = document.getElementById('hideBracketsCheckbox');
-      const hideAyahInfo = document.getElementById('hideAyahInfoCheckbox');
-      const hideArabic = document.getElementById('hideArabicCheckbox');
-      const hideEnglish = document.getElementById('hideEnglishCheckbox');
-      const swapButtons = document.getElementById('swapButtonsCheckbox');
+    <dialog id="settingsDialog" class="sheet" aria-labelledby="settingsTitle">
+      <form method="dialog" class="sheet-inner" id="settingsForm">
+        <header class="sheet-header">
+          <h2 id="settingsTitle">Settings</h2>
+          <button class="icon-button" value="close" aria-label="Close">✕</button>
+        </header>
 
-      const addSurahRangeButton = document.getElementById('addSurahRangeButton');
-      const addJuzRangeButton = document.getElementById('addJuzRangeButton');
-
-      let currentVerseId = 1;
-
-      let db;
-
-      initSqlJs({ locateFile: file => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.13.0/${file}` })
-        .then(SQL => {
-          fetch('quran.db')
-            .then(res => res.arrayBuffer())
-            .then(buffer => {
-              db = new SQL.Database(new Uint8Array(buffer));
-              displayVerse(currentVerseId);
-            });
-        });
-
-      function getRandomInt(min, max) {
-        return Math.floor(Math.random() * (max - min + 1)) + min;
-      }
-
-      function mapSQLResult(result) {
-        if (!result || result.length === 0) return [];
-
-        const columns = result[0].columns;
-        const values = result[0].values;
-
-        return values.map(row => {
-          const obj = {};
-          row.forEach((val, i) => obj[columns[i]] = val);
-          return obj;
-        });
-      }
-
-      function preprocessText(text) {
-        let result = text;
-
-        if (hideBrackets.checked) {
-          result = text.replace(/\[.*?\]/g, '');
-        }
-        
-        result = result.replace(/\s+/g, ' ');
-        result = result.trim();
-
-        return result;
-      }
-
-      function displayVerse(verseId) {
-        let verseResult = db.exec(`
-          SELECT arabic_text, english_text, juz_number, verse_number, english_name AS surah_name
-          FROM verses
-            JOIN surahs USING (surah_id)
-          WHERE id=${verseId}
-        `);
-
-        verseResult = mapSQLResult(verseResult)[0];
-
-        arabicDiv.textContent = verseResult.arabic_text;
-        englishDiv.textContent = preprocessText(verseResult.english_text);
-
-        if (hideAyahInfo.checked) {
-          juzDiv.textContent = `Juz ??`;
-          surahDiv.textContent = `Surah ??`;
-          ayahDiv.textContent = `Ayah ??`;
-        } else {
-          juzDiv.textContent = `Juz ${verseResult.juz_number}`;
-          surahDiv.textContent = `Surah ${verseResult.surah_name}`;
-          ayahDiv.textContent = `Ayah ${verseResult.verse_number}`;
-        }
-      }
-
-      let surahRanges = [];
-      let juzRanges = [];
-
-      function getVerseIdFromSurahAyah(surahId, ayahNum) {
-        let result = db.exec(`
-          SELECT id FROM verses
-          WHERE surah_id=${surahId} AND verse_number=${ayahNum}
-        `);
-        return mapSQLResult(result)[0]?.id;
-      }
-
-      function getVerseIdsFromJuz(juzNum) {
-        let result = db.exec(`
-          SELECT MIN(id) as min_id, MAX(id) as max_id
-          FROM verses
-          WHERE juz_number=${juzNum}
-        `);
-        return mapSQLResult(result)[0];
-      }
-
-      function isVerseInRanges(verseId) {
-        // Check surah ranges
-        for (let range of surahRanges) {
-          if (verseId >= range.startId && verseId <= range.endId) {
-            return true;
-          }
-        }
-        // Check juz ranges
-        for (let range of juzRanges) {
-          if (verseId >= range.startId && verseId <= range.endId) {
-            return true;
-          }
-        }
-        return false;
-      }
-
-      function getValidPagesFromRanges() {
-        const allRanges = [...surahRanges, ...juzRanges];
-        if (allRanges.length === 0) {
-          // Return all pages (1-604)
-          return Array.from({length: 604}, (_, i) => i + 1);
-        }
-
-        // Get all unique pages that contain verses within our ranges
-        const validPages = new Set();
-        
-        for (let range of allRanges) {
-          let result = db.exec(`
-            SELECT DISTINCT page_number
-            FROM verses
-            WHERE id >= ${range.startId} AND id <= ${range.endId}
-            ORDER BY page_number
-          `);
-          
-          result = mapSQLResult(result);
-          result.forEach(row => validPages.add(row.page_number));
-        }
-        
-        return Array.from(validPages);
-      }
-
-      function getRandomVerseFromRanges() {
-        const allRanges = [...surahRanges, ...juzRanges];
-        
-        // Get valid pages
-        const validPages = getValidPagesFromRanges();
-        if (validPages.length === 0) {
-          return getRandomInt(1, 6236);
-        }
-
-        // Pick a random page
-        const randomPage = validPages[getRandomInt(0, validPages.length - 1)];
-        
-        // Get all verses on this page
-        let versesOnPage = db.exec(`
-          SELECT id
-          FROM verses
-          WHERE page_number = ${randomPage}
-          ORDER BY id
-        `);
-        versesOnPage = mapSQLResult(versesOnPage);
-
-        // Filter to only include verses that are within our ranges
-        let validVerses;
-        if (allRanges.length === 0) {
-          validVerses = versesOnPage;
-        } else {
-          validVerses = versesOnPage.filter(v => isVerseInRanges(v.id));
-        }
-
-        if (validVerses.length === 0) {
-          // Fallback: shouldn't happen, but just in case
-          return getRandomInt(1, 6236);
-        }
-
-        // Pick a random verse from the valid verses on this page
-        const randomVerse = validVerses[getRandomInt(0, validVerses.length - 1)];
-        return randomVerse.id;
-      }
-
-      function populateSurahSelect(selectElem, selectedIndex, minSurah, maxSurah) {
-        selectElem.innerHTML = '';
-        let result = db.exec(`
-          SELECT surah_id AS id, english_name
-          FROM surahs
-          WHERE surah_id>=${minSurah ?? 1}
-          AND surah_id<=${maxSurah ?? 114}
-        `);
-
-        result = mapSQLResult(result);
-        
-        result.forEach((surah) => {
-          const option = document.createElement('option');
-          option.value = surah.id;
-          option.textContent = `${surah.id} - ${surah.english_name}`;
-          selectElem.appendChild(option);
-        });
-
-        if (selectedIndex === -1) {
-          selectElem.selectedIndex = selectElem.options.length - 1;
-        } else if (selectedIndex !== null && selectedIndex !== undefined) {
-          selectElem.selectedIndex = selectedIndex;
-        }
-      }
-      
-      function populateAyahSelect(selectElem, surah_id, selectedIndex, minAyah, maxAyah) {
-        selectElem.innerHTML = '';
-        let result = db.exec(`
-          SELECT verse_count
-          FROM surahs
-          WHERE surah_id=${surah_id}
-        `);
-
-        result = mapSQLResult(result)[0];
-        
-        for (let i = minAyah ?? 1; i <= (maxAyah ?? result.verse_count); i++) {
-          const option = document.createElement('option');
-          option.value = i;
-          option.textContent = i;
-          selectElem.appendChild(option);
-        }
-
-        if (selectedIndex === -1) {
-          selectElem.selectedIndex = selectElem.options.length - 1;
-        } else if (selectedIndex !== null && selectedIndex !== undefined) {
-          selectElem.selectedIndex = selectedIndex;
-        }
-      }
-
-      function populateJuzSelect(selectElem, selectedIndex, minJuz, maxJuz) {
-        selectElem.innerHTML = '';
-        for (let i = minJuz ?? 1; i <= (maxJuz ?? 30); i++) {
-          const option = document.createElement('option');
-          option.value = i;
-          option.textContent = i;
-          selectElem.appendChild(option);
-        }
-
-        if (selectedIndex === -1) {
-          selectElem.selectedIndex = selectElem.options.length - 1;
-        } else if (selectedIndex !== null && selectedIndex !== undefined) {
-          selectElem.selectedIndex = selectedIndex;
-        }
-      }
-
-      addSurahRangeButton.addEventListener('click', () => {
-        // Create container
-        const div = document.createElement('div');
-        div.className = 'range-container';
-
-        // Add labels and selects
-        div.innerHTML = `
-          <div class="range-row">
-            From Surah <select class="from-surah"></select>
-            Ayah <select class="from-ayah"></select>
+        <fieldset>
+          <legend>Arabic</legend>
+          <div class="segmented">
+            <label><input type="radio" name="arabic" value="show"><span>Show</span></label>
+            <label><input type="radio" name="arabic" value="reveal"><span>Tap to reveal</span></label>
+            <label><input type="radio" name="arabic" value="off"><span>Off</span></label>
           </div>
-          <div class="range-row">
-            To Surah <select class="to-surah"></select>
-            Ayah <select class="to-ayah"></select>
-            <button class="remove-range">✖</button>
+          <label class="slider">Size <input type="range" name="arabicSize" min="22" max="56" step="2"></label>
+        </fieldset>
+
+        <fieldset>
+          <legend>Translation (Saheeh International)</legend>
+          <div class="segmented">
+            <label><input type="radio" name="english" value="show"><span>Show</span></label>
+            <label><input type="radio" name="english" value="reveal"><span>Tap to reveal</span></label>
+            <label><input type="radio" name="english" value="off"><span>Off</span></label>
           </div>
-        `;
+          <label class="slider">Size <input type="range" name="englishSize" min="14" max="30" step="1"></label>
+          <label class="field">Square brackets
+            <select name="brackets">
+              <option value="keep">Keep [added words]</option>
+              <option value="marks">Remove the brackets only</option>
+              <option value="words">Remove bracketed words</option>
+            </select>
+          </label>
+        </fieldset>
 
-        // Add it to popup
-        settingsPopup.appendChild(div);
+        <fieldset>
+          <legend>Testing</legend>
+          <label class="check"><input type="checkbox" name="hideInfo"> Hide surah, ayah, juz and page</label>
+          <label class="check"><input type="checkbox" name="avoidRepeats"> Don't repeat ayahs in a session</label>
+          <label class="check"><input type="checkbox" name="showHizbMarker"> Show ۞ quarter markers</label>
+          <label class="check"><input type="checkbox" name="rtl"> Right-to-left: swipe right or tap the left button for next, like turning mushaf pages</label>
+        </fieldset>
 
-        const fromSurah = div.querySelector('.from-surah');
-        const toSurah = div.querySelector('.to-surah');
-        const fromAyah = div.querySelector('.from-ayah');
-        const toAyah = div.querySelector('.to-ayah');
-
-        // Create range object
-        const rangeObj = {
-          element: div,
-          startId: null,
-          endId: null
-        };
-        surahRanges.push(rangeObj);
-
-        function updateRangeIds() {
-          rangeObj.startId = getVerseIdFromSurahAyah(fromSurah.value, fromAyah.value);
-          rangeObj.endId = getVerseIdFromSurahAyah(toSurah.value, toAyah.value);
-        }
-
-        // Populate dropdowns - start with Al-Fatihah (1) and An-Nas (114)
-        populateSurahSelect(fromSurah, 0);
-        populateAyahSelect(fromAyah, fromSurah.value, 0);
-
-        populateSurahSelect(toSurah, -1);
-        populateAyahSelect(toAyah, toSurah.value, -1);
-
-        updateRangeIds();
-
-        // Update Ayah dropdowns when Surah changes
-        fromSurah.addEventListener('change', () => {
-          const fromSurahVal = parseInt(fromSurah.value);
-          const toSurahVal = parseInt(toSurah.value);
-
-          // When fromSurah changes to something different, reset fromAyah to start (1)
-          populateAyahSelect(fromAyah, fromSurahVal, 0);
-
-          // Update toSurah dropdown to only show valid options (>= fromSurah)
-          // Preserve the actual value, not the index
-          const currentToValue = parseInt(toSurah.value);
-          populateSurahSelect(toSurah, null, fromSurahVal);
-          // Restore the value if still valid
-          const newToValue = Math.max(currentToValue, fromSurahVal);
-          toSurah.value = newToValue;
-
-          // If both surahs are the same, set constraints on ayahs
-          if (fromSurahVal === parseInt(toSurah.value)) {
-            const toAyahVal = parseInt(toAyah.value);
-            populateAyahSelect(fromAyah, fromSurahVal, 0, null, toAyahVal);
-          }
-
-          updateRangeIds();
-        });
-
-        toSurah.addEventListener('change', () => {
-          const fromSurahVal = parseInt(fromSurah.value);
-          const toSurahVal = parseInt(toSurah.value);
-
-          // When toSurah changes to something different, reset toAyah to end
-          populateAyahSelect(toAyah, toSurahVal, -1);
-
-          // Update fromSurah dropdown to only show valid options (<= toSurah)
-          // Preserve the actual value, not the index
-          const currentFromValue = parseInt(fromSurah.value);
-          populateSurahSelect(fromSurah, null, null, toSurahVal);
-          // Restore the value if still valid
-          const newFromValue = Math.min(currentFromValue, toSurahVal);
-          fromSurah.value = newFromValue;
-
-          // If both surahs are the same, set constraints on ayahs
-          if (parseInt(fromSurah.value) === toSurahVal) {
-            const fromAyahVal = parseInt(fromAyah.value);
-            populateAyahSelect(toAyah, toSurahVal, -1, fromAyahVal);
-            // Restore toAyah value if still valid
-            const currentToAyahValue = parseInt(toAyah.value);
-            const newToAyahValue = Math.max(currentToAyahValue, fromAyahVal);
-            toAyah.value = newToAyahValue;
-          }
-
-          updateRangeIds();
-        });
-
-        fromAyah.addEventListener('change', () => {
-          const fromSurahVal = parseInt(fromSurah.value);
-          const toSurahVal = parseInt(toSurah.value);
-
-          if (fromSurahVal === toSurahVal) {
-            const fromAyahVal = parseInt(fromAyah.value);
-            const currentToAyahValue = parseInt(toAyah.value);
-            populateAyahSelect(toAyah, toSurahVal, null, fromAyahVal);
-            // Restore toAyah value if still valid
-            const newToAyahValue = Math.max(currentToAyahValue, fromAyahVal);
-            toAyah.value = newToAyahValue;
-          }
-
-          updateRangeIds();
-        });
-
-        toAyah.addEventListener('change', () => {
-          const fromSurahVal = parseInt(fromSurah.value);
-          const toSurahVal = parseInt(toSurah.value);
-
-          if (fromSurahVal === toSurahVal) {
-            const toAyahVal = parseInt(toAyah.value);
-            const currentFromAyahValue = parseInt(fromAyah.value);
-            populateAyahSelect(fromAyah, fromSurahVal, null, null, toAyahVal);
-            // Restore fromAyah value if still valid
-            const newFromAyahValue = Math.min(currentFromAyahValue, toAyahVal);
-            fromAyah.value = newFromAyahValue;
-          }
-
-          updateRangeIds();
-        });
-
-        // Add remove button behavior
-        div.querySelector('.remove-range').addEventListener('click', () => {
-          const index = surahRanges.indexOf(rangeObj);
-          if (index > -1) {
-            surahRanges.splice(index, 1);
-          }
-          div.remove();
-        });
-      });
-
-      // Add Juz Range button
-      addJuzRangeButton.addEventListener('click', () => {
-        const div = document.createElement('div');
-        div.className = 'range-container';
-
-        div.innerHTML = `
-          <div class="range-row">
-            From Juz <select class="from-juz"></select>
-            To Juz <select class="to-juz"></select>
-            <button class="remove-range">✖</button>
+        <fieldset>
+          <legend>Appearance</legend>
+          <div class="segmented">
+            <label><input type="radio" name="theme" value="auto"><span>Auto</span></label>
+            <label><input type="radio" name="theme" value="light"><span>Light</span></label>
+            <label><input type="radio" name="theme" value="dark"><span>Dark</span></label>
           </div>
-        `;
+        </fieldset>
 
-        settingsPopup.appendChild(div);
+        <p class="hint">Keyboard: ← → move · Space random · H next word · A / E show or hide Arabic / English · I info · G got it · M missed</p>
+      </form>
+    </dialog>
 
-        const fromJuz = div.querySelector('.from-juz');
-        const toJuz = div.querySelector('.to-juz');
+    <dialog id="aboutDialog" class="sheet" aria-labelledby="aboutTitle">
+      <form method="dialog" class="sheet-inner">
+        <header class="sheet-header">
+          <h2 id="aboutTitle">About Hasbuk</h2>
+          <button class="icon-button" value="close" aria-label="Close">✕</button>
+        </header>
+        <p>Quran teachers test students by opening the mushaf at a random place and asking them to continue until they say <em>hasbuk</em> (حسبك, "enough"). Pick a range, tap <strong>Random ayah</strong>, and recite on from there.</p>
+        <h3>Credits</h3>
+        <ul class="credits">
+          <li>Quran text and the Uthmanic Hafs font (v0.18, used unmodified): King Fahd Glorious Qur'an Printing Complex, Madinah.</li>
+          <li>English translation: Saheeh International (Abul-Qasim Publishing House), via Tanzil. For non-commercial use.</li>
+          <li>Verse dataset: <a href="https://github.com/risan/quran-json" target="_blank" rel="noopener">risan/quran-json</a>, CC BY-SA 4.0.</li>
+          <li>Juz and page metadata (604-page Madinah mushaf, 1405 AH layout): <a href="https://tanzil.net" target="_blank" rel="noopener">Tanzil</a>, CC BY 3.0.</li>
+        </ul>
+        <p class="hint">Your settings and scores stay on this device. Hasbuk has no accounts and no tracking. <a href="https://github.com/NotAHill/HasbukWeb" target="_blank" rel="noopener">Source code</a> · <span id="versionText"></span></p>
+      </form>
+    </dialog>
 
-        // Create range object
-        const rangeObj = {
-          element: div,
-          startId: null,
-          endId: null
-        };
-        juzRanges.push(rangeObj);
-
-        function updateRangeIds() {
-          const fromJuzData = getVerseIdsFromJuz(fromJuz.value);
-          const toJuzData = getVerseIdsFromJuz(toJuz.value);
-          rangeObj.startId = fromJuzData.min_id;
-          rangeObj.endId = toJuzData.max_id;
-        }
-
-        // Populate with Juz 1 and Juz 30 initially
-        populateJuzSelect(fromJuz, 0);
-        populateJuzSelect(toJuz, -1);
-
-        updateRangeIds();
-
-        fromJuz.addEventListener('change', () => {
-          const fromJuzVal = parseInt(fromJuz.value);
-          
-          // Update toJuz to only show valid options (>= fromJuz)
-          // Preserve the actual value, not the index
-          const currentToValue = parseInt(toJuz.value);
-          populateJuzSelect(toJuz, null, fromJuzVal);
-          // Restore the value if still valid
-          const newToValue = Math.max(currentToValue, fromJuzVal);
-          toJuz.value = newToValue;
-
-          updateRangeIds();
-        });
-
-        toJuz.addEventListener('change', () => {
-          const toJuzVal = parseInt(toJuz.value);
-          
-          // Update fromJuz to only show valid options (<= toJuz)
-          // Preserve the actual value, not the index
-          const currentFromValue = parseInt(fromJuz.value);
-          populateJuzSelect(fromJuz, null, null, toJuzVal);
-          // Restore the value if still valid
-          const newFromValue = Math.min(currentFromValue, toJuzVal);
-          fromJuz.value = newFromValue;
-
-          updateRangeIds();
-        });
-
-        // Add remove button behavior
-        div.querySelector('.remove-range').addEventListener('click', () => {
-          const index = juzRanges.indexOf(rangeObj);
-          if (index > -1) {
-            juzRanges.splice(index, 1);
-          }
-          div.remove();
-        });
-      });
-
-      settingsButton.addEventListener('click', () => {
-        const isOpen = settingsPopup.style.display === 'flex';
-        settingsPopup.style.display = isOpen ? 'none' : 'flex';
-      });
-
-      hideBrackets.addEventListener('change', () => displayVerse(currentVerseId));
-      hideAyahInfo.addEventListener('change', () => displayVerse(currentVerseId));
-
-      ayahInfoDiv.addEventListener('dblclick', () => {
-        hideAyahInfo.checked = !hideAyahInfo.checked;
-        displayVerse(currentVerseId);
-      })
-
-      hideArabic.addEventListener('change', () => {
-        arabicDiv.style.display = hideArabic.checked ? "none" : "block"
-      })
-      hideEnglish.addEventListener('change', () => {
-        englishDiv.style.display = hideEnglish.checked ? "none" : "block"
-      })
-      swapButtons.addEventListener('change', () => {
-        [prevAyahButton.textContent, nextAyahButton.textContent] = [nextAyahButton.textContent, prevAyahButton.textContent];
-      });
-
-      randomAyahButton.addEventListener('click', () => {
-        currentVerseId = getRandomVerseFromRanges();
-        displayVerse(currentVerseId);
-      });
-
-      prevAyahButton.addEventListener('click', () => {
-        if (swapButtons.checked) {
-          if (!currentVerseId || currentVerseId == 6236) {
-            return;
-          }
-          displayVerse(++currentVerseId);
-        } else {
-          if (!currentVerseId || currentVerseId == 1) {
-            return;
-          }
-          displayVerse(--currentVerseId);
-        }
-      });
-      
-      nextAyahButton.addEventListener('click', () => {
-        if (swapButtons.checked) {
-          if (!currentVerseId || currentVerseId == 1) {
-            return;
-          }
-          displayVerse(--currentVerseId);
-        } else {
-          if (!currentVerseId || currentVerseId == 6236) {
-            return;
-          }
-          displayVerse(++currentVerseId);
-        }
-      });
-
-
-    </script>
-    <!-- Service Worker Registration -->
-    <script>
-      if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-          navigator.serviceWorker.register('service-worker.js')
-            .then(registration => {
-              console.log('ServiceWorker registered:', registration);
-            })
-            .catch(err => {
-              console.log('ServiceWorker registration failed:', err);
-            });
-        });
-      }
-    </script>
+    <script type="module" src="js/app.js"></script>
   </body>
 </html>
