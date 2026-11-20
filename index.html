@@ -34,6 +34,9 @@
           <button id="rangesButton" class="chip-button" type="button" aria-haspopup="dialog">
             <span id="rangesSummary">Whole Quran</span>
           </button>
+          <button id="viewButton" class="icon-button" type="button" aria-label="Mushaf page view" aria-pressed="false">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 6.5C10.3 5.2 7.8 4.5 4 4.5v13c3.8 0 6.3.7 8 2 1.7-1.3 4.2-2 8-2v-13c-3.8 0-6.3.7-8 2Z"/><path d="M12 6.5v13"/></svg>
+          </button>
           <button id="settingsButton" class="icon-button" type="button" aria-label="Settings" aria-haspopup="dialog">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"/></svg>
           </button>
@@ -63,6 +66,18 @@
             </div>
           </div>
 
+          <div id="mushafBlock" class="mushaf-block" hidden>
+            <div id="mushafStatus" class="status compact" hidden>
+              <div class="spinner" aria-hidden="true"></div>
+              <p id="mushafStatusText"></p>
+            </div>
+            <div id="mushafPage" class="mushaf-frame" title="Tap to hide or show from the ayah onward"></div>
+            <div id="mushafTools" class="reveal-tools">
+              <button id="mushafHint" class="secondary" type="button">Next word</button>
+              <button id="mushafReveal" class="secondary" type="button">Show page</button>
+            </div>
+          </div>
+
           <div id="englishBlock" class="text-block" hidden>
             <p id="english" class="english" lang="en"></p>
             <div id="englishTools" class="reveal-tools">
@@ -88,7 +103,7 @@
           <button id="nextButton" class="nav-button" type="button" disabled>Next</button>
         </nav>
 
-        <p class="tip">Swipe the card to move between ayahs. Tap the text or the info bar to hide or show it.</p>
+        <p class="tip">Swipe the card to move between ayahs (or turn pages in page view). Tap the text or the info bar to hide or show it.</p>
       </main>
 
       <footer class="footer">
@@ -122,6 +137,14 @@
           <h2 id="settingsTitle">Settings</h2>
           <button class="icon-button" value="close" aria-label="Close">✕</button>
         </header>
+
+        <fieldset>
+          <legend>View</legend>
+          <div class="segmented">
+            <label><input type="radio" name="view" value="ayah"><span>One ayah</span></label>
+            <label><input type="radio" name="view" value="page"><span>Mushaf page (1405)</span></label>
+          </div>
+        </fieldset>
 
         <fieldset>
           <legend>Arabic</legend>
@@ -167,7 +190,7 @@
           </div>
         </fieldset>
 
-        <p class="hint">Keyboard: ← → move · Space random · H next word · A / E show or hide Arabic / English · I info · G got it · M missed</p>
+        <p class="hint">Keyboard: ← → move · Space random · H next word · A / E show or hide Arabic / English · I info · P page view · G got it · M missed</p>
       </form>
     </dialog>
 
@@ -183,6 +206,8 @@
           <li>Quran text and the Uthmanic Hafs font (v0.18, used unmodified): King Fahd Glorious Qur'an Printing Complex, Madinah.</li>
           <li>English translation: Saheeh International (Abul-Qasim Publishing House), via Tanzil. For non-commercial use.</li>
           <li>Verse dataset: <a href="https://github.com/risan/quran-json" target="_blank" rel="noopener">risan/quran-json</a>, CC BY-SA 4.0.</li>
+          <li>Mushaf page view: QPC V1 page fonts (1405 AH print), King Fahd Glorious Qur'an Printing Complex, used unmodified; page layout and glyph data from the <a href="https://qul.tarteel.ai" target="_blank" rel="noopener">Quranic Universal Library</a> by Tarteel.</li>
+          <li>Surah header font: © QUL (Naveed Ahmad, Muath Ahmed Ibn-Hassan), <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>.</li>
           <li>Juz and page metadata (604-page Madinah mushaf, 1405 AH layout): <a href="https://tanzil.net" target="_blank" rel="noopener">Tanzil</a>, CC BY 3.0.</li>
         </ul>
         <p class="hint">Your settings and scores stay on this device. Hasbuk has no accounts and no tracking. <a href="https://github.com/NotAHill/HasbukWeb" target="_blank" rel="noopener">Source code</a> · <span id="versionText"></span></p>

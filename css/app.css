@@ -1,4 +1,10 @@
 @font-face {
+  font-family: "SurahHeader";
+  src: url("../fonts/surah-header.woff2") format("woff2");
+  font-display: block;
+}
+
+@font-face {
   font-family: "Uthmani";
   src: url("../fonts/UthmanicHafs1Ver18.woff2") format("woff2");
   font-display: swap;
@@ -495,3 +501,78 @@ select {
 }
 
 .toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+/* Mushaf page view */
+.mushaf-block { padding: 12px 10px 16px; }
+
+.status.compact { min-height: 160px; }
+
+.mushaf-frame {
+  container-type: inline-size;
+  padding: 14px 12px 10px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  box-shadow: inset 0 0 0 4px var(--surface), inset 0 0 0 5px var(--border);
+  cursor: pointer;
+}
+
+.mushaf-frame:empty { display: none; }
+
+.mushaf-page { color: var(--text); line-height: 1.75; }
+
+.mline {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  min-height: 1.75em;
+  white-space: nowrap;
+}
+
+.mline.centered { justify-content: center; gap: 0.08em; }
+
+.mushaf-page.measuring .mline { justify-content: flex-start; gap: 0; }
+
+.mw { border-radius: 0.12em; transition: color 0.15s ease, background-color 0.15s ease; }
+.mw.target { color: var(--accent); }
+.mw.masked {
+  color: transparent;
+  background: linear-gradient(var(--mask), var(--mask)) center / 100% 0.55em no-repeat;
+}
+
+.surah-banner, .basmala {
+  justify-content: center;
+  align-items: center;
+  font-family: "Uthmani", "Geeza Pro", serif;
+}
+
+.surah-banner span {
+  display: block;
+  width: 100%;
+  margin: 0.12em 0;
+  padding: 0.05em 0;
+  border: 1px solid var(--border);
+  border-radius: 0.3em;
+  background: var(--surface-2);
+  font-size: 0.8em;
+  line-height: 1.5;
+  text-align: center;
+}
+
+.surah-banner span.surah-glyph {
+  font-family: "SurahHeader";
+  font-size: 1.3em;
+  line-height: 1.1;
+}
+
+.basmala { font-size: 0.85em; min-height: 2.1em; }
+
+.mushaf-footer {
+  margin-top: 4px;
+  font-size: 13px;
+  color: var(--muted);
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+#viewButton[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }

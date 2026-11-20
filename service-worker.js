@@ -6,7 +6,7 @@
 // while the app still works with no connection.
 //
 // Bump VERSION whenever the list of shell files changes.
-const VERSION = 'hasbuk-v2';
+const VERSION = 'hasbuk-v3';
 const NETWORK_TIMEOUT_MS = 4000;
 
 const SHELL = [
@@ -19,8 +19,10 @@ const SHELL = [
   'js/picker.js',
   'js/store.js',
   'js/gestures.js',
+  'js/mushaf.js',
   'data/quran.min.json',
   'fonts/UthmanicHafs1Ver18.woff2',
+  'fonts/surah-header.woff2',
   'manifest.json',
   'icons/icon.svg',
   'icons/icon-192.png',
