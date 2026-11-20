@@ -1,43 +1,61 @@
-# Hasbuk Web Version
+# Hasbuk Web
 
-[![Vercel Deployment](https://img.shields.io/badge/Deployed%20on-Vercel-black?logo=vercel)]()  
-[![website Status](https://img.shields.io/website?url=https%3A%2F%2Fhasbuk-web.vercel.app)]()  
-![GitHub last commit](https://img.shields.io/github/last-commit/NotAHill/HasbukWeb)  
-![GitHub repo size](https://img.shields.io/github/repo-size/NotAHill/HasbukWeb)  
+[![Vercel Deployment](https://img.shields.io/badge/Deployed%20on-Vercel-black?logo=vercel)]()
+[![website Status](https://img.shields.io/website?url=https%3A%2F%2Fhasbuk-web.vercel.app)]()
+![GitHub last commit](https://img.shields.io/github/last-commit/NotAHill/HasbukWeb)
+![GitHub repo size](https://img.shields.io/github/repo-size/NotAHill/HasbukWeb)
 
 ٱلسَّلَامُ عَلَيْكُمْ وَرَحْمَةُ ٱللَّٰهِ وَبَرَكَاتُهُ
 
-Hasbuk Web is a Quran memorisation tool to assist with the memorisation/understanding of the Quran. You can find the most recent release here: https://hasbuk-web.vercel.app
+Hasbuk is a Quran memorisation tester. The latest release is at https://hasbuk-web.vercel.app
 
 ## How to use
 
-Quran teachers often pick random ayahs of the Quran to test a student's knowledge and ask them to continue from there until they say "Hasbuk" (حسبك meaning enough)
+Quran teachers often open the mushaf at a random ayah and ask a student to continue from there until they say "Hasbuk" (حسبك, "enough"). Hasbuk does the same:
 
-The core of this app follows from that - You input a range of the Quran that you want to test yourself or someone else on and then press "Select Random Ayah". This picks from that range and you go to the next ayah until you say "Hasbuk" when they have read enough and are ready to move on.
+1. Tap the range button at the top and choose what to test: surah/ayah ranges, juz ranges or page ranges, as many as you like. With no ranges, the whole Quran is used.
+2. Tap **Random ayah** and recite on from there. Swipe the card, or use **Prev**/**Next**, to follow along.
+3. Grade yourself with **Got it** or **Missed** to move to the next question. Your score and streak are kept for the session.
 
-Another way that people have used it is to test ayah translation, from Arabic to English and vice versa. The Saheeh Internation translation is currently being used in the app. 
-
-Another way that people have used the app is to test which Surah/Juz a particular verse belongs
+People also use it to practise translation (Arabic to English and back) and to test which surah or juz an ayah belongs to.
 
 ## Features
 
-1. You can select multiple ranges (from Surah and Juz) and the selection algorithm will select an ayah from any one of those ranges.
-2. View English/Arabic translations of a verse and see Juz/Ayah/Surah info associated with it.
-3. Double tap the Juz/Ayah/Surah info to hide/show it
-4. You can choose 'Add to Home Screen' on your mobile device browser to save it as an app that can be used offline.
+- Random ayahs from any mix of surah, juz and page ranges. Picks are weighted by page, like opening the mushaf, and don't repeat within a session.
+- Swipe between ayahs; tap the Arabic, the translation or the info bar to hide or show it.
+- "Tap to reveal" mode: each ayah starts hidden, and **Next word** reveals it one word at a time (counted as a hint).
+- Session score, streaks and "last pick" to go back to the previous question.
+- Settings for text size, square brackets in the translation, ۞ quarter markers, right-to-left navigation and light/dark theme. Settings and ranges are saved on the device.
+- Keyboard shortcuts: ← → move, Space random, H next word, A/E show or hide Arabic/English, I info, G got it, M missed.
+- Installable and works offline ("Add to Home Screen").
 
-## Files
+## Development
 
-`quran.json` - A json of each surah and ayah in the quran with juz and page number information.
-`quran.db` - A sqlite3 DB with 'surahs' and 'verses' tables. This is what is used in the website.
-`convert.js` - A conversion script to convert the quran.json to quran.db
-`index.html` - Single HTML/CSS/Vanilla JS file where all the code is contained
-`manifest.json`/`service-worker.json` - Used to enable offline usage for the website when you press 'Add to Home Screen'.
+No build step: the site is static files served as-is (Vercel).
 
+```
+python3 -m http.server 8000   # then open http://localhost:8000
+npm test                      # unit tests (Node 20+)
+npm run build:data            # rebuild data/quran.min.json after editing quran.json
+```
+
+| Path | What it is |
+| --- | --- |
+| `index.html`, `css/app.css` | Page markup and styles |
+| `js/app.js` | UI wiring |
+| `js/data.js`, `js/picker.js`, `js/text.js` | Pure logic (data lookups, ranges and random picks, text formatting), unit tested in `tests/` |
+| `js/store.js`, `js/gestures.js` | localStorage settings, swipe handling |
+| `quran.json` | Source data: surahs and verses with juz and page numbers |
+| `data/quran.min.json` | Compact data the app loads, generated by `scripts/build-data.cjs` (also fixes known text defects) |
+| `service-worker.js` | Offline support. Network first, cache fallback. **Bump `VERSION` when the list of shell files changes.** |
+
+## Credits and licences
+
+- **Quran text** and the **KFGQPC Uthmanic Script Hafs** font (v0.18): King Fahd Glorious Qur'an Printing Complex, Madinah. The font is redistributed under its own licence, which forbids modifying it; see `fonts/LICENSE-KFGQPC.txt`.
+- **English translation**: Saheeh International, © Abul-Qasim Publishing House, obtained via [Tanzil](https://tanzil.net/trans/). Provided for non-commercial use.
+- **Verse dataset**: [risan/quran-json](https://github.com/risan/quran-json) v3.1.2, [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/). `quran.json` and `data/quran.min.json` are derived from it and shared under the same licence.
+- **Juz and page metadata** (604-page Madinah mushaf, 1405 AH layout): [Tanzil](https://tanzil.net), CC BY 3.0.
 
 ## Contribute
 
-This is an open source project, so please feel free to create forks/PRs to contribute to this project and report any bugs you find in the Github Issues tab.
-
-
-
+This is an open source project. Feel free to fork it, open PRs, and report bugs in the GitHub Issues tab.

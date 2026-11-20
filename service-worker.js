@@ -1,53 +1,77 @@
-const CACHE_NAME = 'hasbuk-v1';
-const urlsToCache = [
-  '/',
-  '/index.html',
-  '/quran.db',
-  '/manifest.json',
-  '/UthmanicHafs1Ver18.woff2',
-  'https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.13.0/sql-wasm.js',
-  'https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.13.0/sql-wasm.wasm',
-  'https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Inter:wght@400;500;600&display=swap'
+// Offline support.
+//
+// Strategy: network first for everything same-origin, falling back to the
+// cache when offline or when the network is too slow. This means a deploy
+// reaches users on their next load (the old cache-first worker never updated),
+// while the app still works with no connection.
+//
+// Bump VERSION whenever the list of shell files changes.
+const VERSION = 'hasbuk-v2';
+const NETWORK_TIMEOUT_MS = 4000;
+
+const SHELL = [
+  './',
+  'index.html',
+  'css/app.css',
+  'js/app.js',
+  'js/data.js',
+  'js/text.js',
+  'js/picker.js',
+  'js/store.js',
+  'js/gestures.js',
+  'data/quran.min.json',
+  'fonts/UthmanicHafs1Ver18.woff2',
+  'manifest.json',
+  'icons/icon.svg',
+  'icons/icon-192.png',
+  'icons/icon-512.png',
+  'icons/maskable-512.png',
+  'icons/apple-touch-icon.png',
+  'icons/favicon-32.png',
 ];
 
-// Install event - cache resources
-self.addEventListener('install', event => {
+self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then(cache => {
-        console.log('Opened cache');
-        return cache.addAll(urlsToCache);
-      })
+    caches.open(VERSION)
+      .then((cache) => cache.addAll(SHELL.map((url) => new Request(url, { cache: 'reload' }))))
+      .then(() => self.skipWaiting()),
   );
 });
 
-// Fetch event - serve from cache, fallback to network
-self.addEventListener('fetch', event => {
-  event.respondWith(
-    caches.match(event.request)
-      .then(response => {
-        // Cache hit - return response
-        if (response) {
-          return response;
-        }
-        return fetch(event.request);
-      }
-    )
+self.addEventListener('activate', (event) => {
+  event.waitUntil(
+    caches.keys()
+      .then((keys) => Promise.all(keys.filter((k) => k !== VERSION).map((k) => caches.delete(k))))
+      .then(() => self.clients.claim()),
   );
 });
 
-// Activate event - clean up old caches
-self.addEventListener('activate', event => {
-  event.waitUntil(
-    caches.keys().then(cacheNames => {
-      return Promise.all(
-        cacheNames.map(cacheName => {
-          if (cacheName !== CACHE_NAME) {
-            console.log('Deleting old cache:', cacheName);
-            return caches.delete(cacheName);
-          }
-        })
-      );
-    })
-  );
+self.addEventListener('fetch', (event) => {
+  const { request } = event;
+  if (request.method !== 'GET') return;
+  const url = new URL(request.url);
+  if (url.origin !== self.location.origin) return;
+
+  event.respondWith(networkFirst(event, request));
 });
+
+async function networkFirst(event, request) {
+  const cache = await caches.open(VERSION);
+  // Navigations (any path) are served by the app shell when offline.
+  const cacheKey = request.mode === 'navigate' ? 'index.html' : request;
+  const cached = await cache.match(cacheKey, { ignoreSearch: request.mode === 'navigate' });
+
+  let saved = Promise.resolve();
+  const network = fetch(request).then((response) => {
+    if (response.ok && response.type === 'basic') saved = cache.put(cacheKey, response.clone());
+    return response;
+  });
+  // Keep the worker alive to finish updating the cache even if the timeout wins.
+  event.waitUntil(network.then(() => saved).catch(() => {}));
+
+  if (!cached) return network;
+
+  // With a cached copy available, don't leave the user waiting on a bad connection.
+  const timeout = new Promise((resolve) => setTimeout(() => resolve(cached), NETWORK_TIMEOUT_MS));
+  return Promise.race([network.catch(() => cached), timeout]);
+}
