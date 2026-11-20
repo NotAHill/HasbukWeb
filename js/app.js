@@ -3,6 +3,7 @@ import { formatArabic, formatEnglish, splitWords } from './text.js';
 import { pickRandom, rangeLabel, countVerses } from './picker.js';
 import { loadState, saveState } from './store.js';
 import { attachSwipe } from './gestures.js';
+import { loadLayout, loadPageFont, preloadAround, buildPage, fitPage, firstWordOf, MushafUnavailable } from './mushaf.js';
 
 const APP_VERSION = '0.9.0-beta';
 const MAX_PICK_HISTORY = 50;
@@ -21,6 +22,9 @@ const view = {
   // A random pick waiting to be graded: { id, hinted }
   question: null,
 };
+
+// The rendered mushaf page, reused while the ayah stays on the same page.
+const mushaf = { page: 0, root: null, words: [], token: 0 };
 
 function clampId(id) {
   const n = Number(id);
@@ -48,9 +52,14 @@ function render() {
   $('infoPage').textContent = state.hideInfo ? '??' : v.page;
   info.title = state.hideInfo ? 'Tap to show where this ayah is' : `${surah.name} (${surah.meaning}) · tap to hide`;
 
-  // Arabic
-  $('arabicBlock').hidden = state.arabic === 'off';
-  if (state.arabic !== 'off') {
+  // Arabic: a single ayah, or the whole mushaf page around it
+  const pageView = state.view === 'page';
+  $('mushafBlock').hidden = !pageView;
+  $('viewButton').setAttribute('aria-pressed', String(pageView));
+  $('viewButton').title = pageView ? 'Show one ayah' : 'Show the mushaf page';
+  if (pageView) updateMushaf();
+  $('arabicBlock').hidden = pageView || state.arabic === 'off';
+  if (!pageView && state.arabic !== 'off') {
     const words = splitWords(formatArabic(v.arabic, { showHizbMarker: state.showHizbMarker }));
     view.wordCount = words.length;
     const p = $('arabic');
@@ -79,6 +88,79 @@ function render() {
   $('grade').hidden = !view.question;
   renderSession();
   persist();
+}
+
+async function updateMushaf() {
+  const page = quran.pageOf(view.id);
+  const token = ++mushaf.token;
+  if (mushaf.page !== page || !mushaf.root) {
+    setMushafStatus('Loading page…');
+    const layoutPromise = loadLayout();
+    const fontPromise = loadPageFont(page);
+    fontPromise.catch(() => {}); // reported below, after the layout
+    let layout;
+    let family;
+    try {
+      layout = await layoutPromise;
+      family = await fontPromise;
+    } catch (err) {
+      if (token !== mushaf.token) return;
+      console.warn(err);
+      mushaf.page = 0;
+      mushaf.root = null;
+      mushaf.words = [];
+      $('mushafPage').replaceChildren();
+      setMushafStatus(err instanceof MushafUnavailable
+        ? 'The mushaf page view isn\'t available in this version yet.'
+        : navigator.onLine === false
+          ? 'This page isn\'t saved for offline use yet. Connect once to load it.'
+          : 'Couldn\'t load this page. Check your connection and try again.', { error: true });
+      return;
+    }
+    if (token !== mushaf.token) return;
+    const { root, words } = buildPage(layout, page, { family, surahName: (n) => quran.surah(n).arabic });
+    const footer = document.createElement('div');
+    footer.className = 'mushaf-footer';
+    $('mushafPage').replaceChildren(root, footer);
+    Object.assign(mushaf, { page, root, words });
+    setMushafStatus(null);
+    fitPage(root);
+    preloadAround(page);
+  }
+  applyMushafMarks();
+}
+
+// Highlights the ayah being tested and, when hidden, masks it and everything
+// after it on the page; "Next word" reveals one word at a time from its start.
+function applyMushafMarks() {
+  const start = firstWordOf(mushaf.words, view.id);
+  let counted = 0;
+  let prevMasked = false;
+  mushaf.words.forEach((w, i) => {
+    let masked = false;
+    if (view.arabicHidden && start !== -1 && i >= start) {
+      if (w.end) {
+        masked = prevMasked; // the ayah number shows with the word before it
+      } else {
+        counted++;
+        masked = counted > view.revealedWords;
+      }
+    }
+    prevMasked = masked;
+    w.el.classList.toggle('masked', masked);
+    w.el.classList.toggle('target', w.verse === view.id);
+  });
+  view.wordCount = counted;
+  const footer = $('mushafPage').querySelector('.mushaf-footer');
+  if (footer) footer.textContent = state.hideInfo ? '' : String(mushaf.page);
+  $('mushafTools').hidden = !view.arabicHidden;
+}
+
+function setMushafStatus(text, { error = false } = {}) {
+  const el = $('mushafStatus');
+  el.hidden = !text;
+  el.classList.toggle('error', error);
+  $('mushafStatusText').textContent = text || '';
 }
 
 function renderSession() {
@@ -217,7 +299,7 @@ function hintWord() {
 }
 
 function toggleArabic() {
-  if (state.arabic === 'off') return;
+  if (state.arabic === 'off' && state.view !== 'page') return;
   view.arabicHidden = !view.arabicHidden;
   view.revealedWords = 0;
   render();
@@ -234,10 +316,26 @@ function toggleInfo() {
   render();
 }
 
-// Swipe left (or press →) for the next ayah, like a carousel. In RTL mode it's the
-// mushaf way round: swipe right (turning a page) or press ← for the next ayah.
-function swipeLeft() { return state.rtl ? prev() : next(); }
-function swipeRight() { return state.rtl ? next() : prev(); }
+// In page view a swipe turns the page; Prev/Next still move one ayah.
+function pageStep(delta) {
+  const page = quran.pageOf(view.id) + delta;
+  if (page < 1 || page > PAGE_COUNT) return false;
+  goTo(quran.pageRange(page)[0]);
+  return true;
+}
+
+function forward() { return state.view === 'page' ? pageStep(1) : next(); }
+function backward() { return state.view === 'page' ? pageStep(-1) : prev(); }
+
+// Swipe left (or press →) to go forward, like a carousel. In RTL mode it's the
+// mushaf way round: swipe right (turning a page) or press ← to go forward.
+function swipeLeft() { return state.rtl ? backward() : forward(); }
+function swipeRight() { return state.rtl ? forward() : backward(); }
+
+function toggleView() {
+  state.view = state.view === 'page' ? 'ayah' : 'page';
+  render();
+}
 
 // ---------------------------------------------------------------- ranges UI
 
@@ -397,6 +495,11 @@ function setupControls() {
   $('revealButton').addEventListener('click', toggleArabic);
   $('revealEnglishButton').addEventListener('click', toggleEnglish);
   $('arabic').addEventListener('click', toggleArabic);
+  $('mushafPage').addEventListener('click', toggleArabic);
+  $('mushafHint').addEventListener('click', hintWord);
+  $('mushafReveal').addEventListener('click', toggleArabic);
+  $('viewButton').addEventListener('click', toggleView);
+  new ResizeObserver(() => { if (mushaf.root) fitPage(mushaf.root); }).observe($('mushafPage'));
   $('english').addEventListener('click', toggleEnglish);
   $('info').addEventListener('click', toggleInfo);
   $('gradeGot').addEventListener('click', () => grade('got'));
@@ -419,6 +522,7 @@ function setupControls() {
       a: toggleArabic,
       e: toggleEnglish,
       i: toggleInfo,
+      p: toggleView,
       g: () => grade('got'),
       m: () => grade('missed'),
     };

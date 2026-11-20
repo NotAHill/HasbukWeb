@@ -14,6 +14,7 @@ export const DEFAULTS = {
   rtl: false, // swipe right / right-hand button for next, like turning mushaf pages
   avoidRepeats: true,
   theme: 'auto', // 'auto' | 'light' | 'dark'
+  view: 'ayah', // 'ayah' | 'page' (1405 mushaf page)
   ranges: [],
   lastVerse: 1,
   session: { correct: 0, hinted: 0, missed: 0, streak: 0, best: 0, seen: [], picks: [] },
