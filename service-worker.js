@@ -22,6 +22,7 @@ const SHELL = [
   'js/mushaf.js',
   'data/quran.min.json',
   'fonts/UthmanicHafs1Ver18.woff2',
+  'fonts/surah-header.woff2',
   'manifest.json',
   'icons/icon.svg',
   'icons/icon-192.png',

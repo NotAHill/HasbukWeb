@@ -1,0 +1,9 @@
+header-surah-name (fonts/surah-header.woff2), Version 1.000
+Source: Quranic Universal Library (QUL), "Surah name header font" — https://qul.tarteel.ai
+
+Copyright (c) QUL. Designed by Naveed Ahmad, Muath Ahmed Ibn-Hassan.
+Licensed under the Creative Commons Attribution 4.0 International License (CC BY 4.0):
+https://creativecommons.org/licenses/by/4.0/
+
+The font file is used unmodified. It covers surahs 2–114 (U+E002–U+E072);
+Hasbuk draws Al-Fatihah's header as text.

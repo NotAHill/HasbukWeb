@@ -67,7 +67,16 @@ export function buildPage(layout, page, { family, surahName }) {
     if (line[0] === 's') {
       row.className = 'mline surah-banner';
       const label = document.createElement('span');
-      label.textContent = `سُورَةُ ${surahName(line[1])}`;
+      const surah = line[1];
+      if (surah >= 2) {
+        // QUL's surah header font: one calligraphic glyph per surah at U+E000 + n
+        // (Al-Fatihah isn't in it, so it keeps the text banner).
+        label.className = 'surah-glyph';
+        label.textContent = String.fromCodePoint(0xE000 + surah);
+        label.setAttribute('aria-label', `سُورَةُ ${surahName(surah)}`);
+      } else {
+        label.textContent = `سُورَةُ ${surahName(surah)}`;
+      }
       row.append(label);
     } else if (line[0] === 'b') {
       row.className = 'mline basmala';

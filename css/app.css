@@ -1,4 +1,10 @@
 @font-face {
+  font-family: "SurahHeader";
+  src: url("../fonts/surah-header.woff2") format("woff2");
+  font-display: block;
+}
+
+@font-face {
   font-family: "Uthmani";
   src: url("../fonts/UthmanicHafs1Ver18.woff2") format("woff2");
   font-display: swap;
@@ -551,6 +557,12 @@ select {
   font-size: 0.8em;
   line-height: 1.5;
   text-align: center;
+}
+
+.surah-banner span.surah-glyph {
+  font-family: "SurahHeader";
+  font-size: 1.3em;
+  line-height: 1.1;
 }
 
 .basmala { font-size: 0.85em; min-height: 2.1em; }

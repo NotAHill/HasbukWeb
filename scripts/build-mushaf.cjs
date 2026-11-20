@@ -69,9 +69,13 @@ function readWords(file) {
     }));
   }
   const db = openDb(file);
-  return db.prepare('SELECT word_index, surah, ayah, text FROM words ORDER BY word_index')
+  // QUL's docs call the id column word_index; its downloads call it id.
+  const columns = db.prepare('PRAGMA table_info(words)').all().map((c) => c.name);
+  const idColumn = columns.includes('word_index') ? 'word_index' : 'id';
+  if (!columns.includes(idColumn)) fail(`words table has no word_index or id column (${columns.join(', ')})`);
+  return db.prepare(`SELECT ${idColumn} AS idx, surah, ayah, text FROM words ORDER BY ${idColumn}`)
     .all()
-    .map((w) => ({ index: Number(w.word_index), surah: Number(w.surah), ayah: Number(w.ayah), text: String(w.text) }));
+    .map((w) => ({ index: Number(w.idx), surah: Number(w.surah), ayah: Number(w.ayah), text: String(w.text) }));
 }
 
 function main() {
