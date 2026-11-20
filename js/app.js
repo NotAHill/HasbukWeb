@@ -8,6 +8,8 @@ import {
   pickQuestions, createChallenge, challengeUrl, challengeFromHash, decodeChallenge, addResult, mergeResults,
   ranked, score, formatScore, tally, cleanName, describeMode, MARKS, MAX_LABEL,
 } from './challenge.js';
+import qrcode from './vendor/qrcode.js';
+import { RoomConnection, newCode, newId, normaliseCode, qrSvg, CODE_PATTERN } from './room.js';
 
 const APP_VERSION = '0.9.0-beta';
 const MAX_PICK_HISTORY = 50;
@@ -28,6 +30,18 @@ const view = {
   question: null,
 };
 
+// The live room I'm in (state.live holds who I am; this holds the connection).
+const room = {
+  conn: null,
+  snap: null, // latest state from the server
+  status: 'closed', // connecting | open | offline | closed
+  roundKey: null, // "round:reciter" last shown
+  panelOpen: false, // invite panel open during a round
+  showInfo: false, // location revealed for this round
+  createTries: 0,
+  qrFor: null,
+};
+
 // The rendered mushaf page, reused while the ayah stays on the same page.
 const mushaf = { page: 0, root: null, words: [], token: 0 };
 
@@ -40,8 +54,20 @@ function clampId(id) {
 // had Hasbuk set up, without changing the player's own settings.
 function opts() {
   const run = state.run;
-  if (!run) return state;
-  return { ...state, arabic: run.challenge.mode.arabic, english: run.challenge.mode.english, hideInfo: run.hideInfo };
+  if (run) return { ...state, arabic: run.challenge.mode.arabic, english: run.challenge.mode.english, hideInfo: run.hideInfo };
+  const round = state.live && room.snap?.round;
+  if (round) {
+    // In 'turns' rooms, the people marking the reciter see everything.
+    const { mode, style } = room.snap.settings;
+    const judging = style === 'turns' && round.reciter !== room.snap.you;
+    return {
+      ...state,
+      arabic: judging && mode.arabic === 'reveal' ? 'show' : mode.arabic,
+      english: judging && mode.english === 'reveal' ? 'show' : mode.english,
+      hideInfo: !judging && mode.hideInfo && !room.showInfo,
+    };
+  }
+  return state;
 }
 
 function persist() {
@@ -105,11 +131,13 @@ function render() {
   $('nextButton').disabled = pageView ? page >= PAGE_COUNT : view.id >= VERSE_COUNT;
   $('grade').hidden = !view.question;
   const running = Boolean(state.run);
-  $('controls').hidden = running;
-  $('challengeButton').hidden = running;
-  $('tip').hidden = running;
+  const live = Boolean(state.live);
+  $('controls').hidden = running || live;
+  $('challengeButton').hidden = running || live;
+  $('tip').hidden = running || live;
   $('challengeBar').hidden = !running;
   if (running) renderChallengeBar();
+  renderRoom();
   renderSession();
   persist();
 }
@@ -190,7 +218,7 @@ function setMushafStatus(text, { error = false } = {}) {
 function renderSession() {
   const s = state.session;
   const answered = s.correct + s.hinted + s.missed;
-  $('sessionBar').hidden = Boolean(state.run) || (answered === 0 && s.picks.length < 2);
+  $('sessionBar').hidden = Boolean(state.run || state.live) || (answered === 0 && s.picks.length < 2);
   const parts = [`✓ ${s.correct}`];
   if (s.hinted) parts.push(`with hints ${s.hinted}`);
   parts.push(`✗ ${s.missed}`);
@@ -291,6 +319,10 @@ function lastPick() {
 }
 
 function grade(result) {
+  if (state.live) {
+    roomGrade(result);
+    return;
+  }
   if (!view.question) return;
   if (state.run) {
     gradeChallenge(result);
@@ -342,6 +374,7 @@ function toggleEnglish() {
 
 function toggleInfo() {
   if (state.run) state.run.hideInfo = !state.run.hideInfo;
+  else if (state.live && room.snap?.round) room.showInfo = !room.showInfo;
   else state.hideInfo = !state.hideInfo;
   render();
 }
@@ -422,6 +455,9 @@ function openChallengeDialog() {
   $('challengeName').setCustomValidity('');
   $('challengeFrom').textContent = `${rangesText()} (${countVerses(quran, state.ranges).toLocaleString()} ayahs)`;
   $('challengeMode').textContent = capitalise(describeMode(state));
+  $('joinCode').value = '';
+  $('joinCode').setCustomValidity('');
+  showFriendsMode();
   const recent = $('recentList');
   recent.replaceChildren(...state.challenges.map((entry) => {
     const li = document.createElement('li');
@@ -444,7 +480,7 @@ function openChallengeDialog() {
     li.append(button);
     return li;
   }));
-  $('recentChallenges').hidden = state.challenges.length === 0;
+  showFriendsMode();
   openDialog($('challengeDialog'));
 }
 
@@ -485,6 +521,10 @@ function startFromIntro() {
 }
 
 function startRun(challenge) {
+  if (state.live) {
+    endLive();
+    toast('You left the live room.');
+  }
   if (state.run && state.run.challenge.id !== challenge.id) toast('Your other challenge was stopped.');
   state.run = { challenge, index: 0, marks: '', hideInfo: challenge.mode.hideInfo };
   showQuestion();
@@ -698,13 +738,415 @@ function setupChallenges() {
   $('shareResultsButton').addEventListener('click', () => shareChallenge($('resultsDialog').dataset.challenge));
   $('copyResultsButton').addEventListener('click', () => copyChallenge($('resultsDialog').dataset.challenge));
   // Enter in a name box starts, rather than submitting (which would close the sheet).
-  for (const [input, action] of [['challengeName', 'playChallengeButton'], ['introName', 'startChallengeButton']]) {
+  const enterActions = [
+    ['challengeName', () => (friendsMode() === 'room' ? 'createRoomButton' : 'playChallengeButton')],
+    ['introName', () => 'startChallengeButton'],
+    ['joinCode', () => 'joinRoomButton'],
+    ['joinName', () => 'joinStartButton'],
+  ];
+  for (const [input, action] of enterActions) {
     $(input).addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') { e.preventDefault(); $(action).click(); }
+      if (e.key === 'Enter') { e.preventDefault(); $(action()).click(); }
     });
     $(input).addEventListener('input', () => $(input).setCustomValidity(''));
   }
-  window.addEventListener('hashchange', () => { if (quran) receiveFromHash(); });
+  window.addEventListener('hashchange', () => {
+    if (!quran) return;
+    receiveFromHash();
+    receiveRoomFromHash();
+  });
+}
+
+// ---------------------------------------------------------------- live rooms
+
+const STYLE_HINTS = {
+  turns: 'One person recites each ayah, taking turns. Everyone else sees it and marks how they did.',
+  all: 'Everyone recites each ayah on their own and marks themselves. Good on a call, or for a class.',
+};
+
+function friendsMode() {
+  return $('challengeForm').elements.friendsMode.value;
+}
+
+function showFriendsMode() {
+  const mode = friendsMode();
+  for (const el of $('challengeDialog').querySelectorAll('[data-mode]')) {
+    el.hidden = el.dataset.mode !== mode || (el.id === 'recentChallenges' && state.challenges.length === 0);
+  }
+  $('roomStyleHint').textContent = STYLE_HINTS[$('challengeForm').elements.roomStyle.value];
+}
+
+function roomLink(code) {
+  const url = new URL(location.href);
+  url.search = '';
+  url.hash = `room=${code}`;
+  return url.href;
+}
+
+function startLive(live) {
+  if (state.run) {
+    state.run = null;
+    view.question = null;
+    toast('Your challenge was stopped.');
+  }
+  room.conn?.stop();
+  state.live = live;
+  room.snap = null;
+  room.roundKey = null;
+  room.panelOpen = false;
+  room.status = 'connecting';
+  saveState(state);
+  room.conn = new RoomConnection(live.code, {
+    playerId: live.playerId,
+    secret: live.secret,
+    name: state.playerName,
+    create: live.create,
+  }, { onState: onRoomState, onError: onRoomError, onStatus: onRoomStatus });
+  render();
+}
+
+function endLive() {
+  const conn = room.conn;
+  room.conn = null;
+  conn?.stop();
+  room.snap = null;
+  room.status = 'closed';
+  state.live = null;
+  view.question = null;
+  saveState(state);
+  goTo(view.id);
+}
+
+function onRoomState(snap) {
+  if (!state.live || snap.code !== state.live.code) return;
+  room.snap = snap;
+  if (state.live.create) {
+    delete state.live.create; // the room exists now
+    room.createTries = 0;
+    saveState(state);
+  }
+  const round = snap.round;
+  const key = round ? `${round.n}:${round.reciter}` : null;
+  if (round && key !== room.roundKey) {
+    // A new ayah (or a new reciter for it): show it fresh.
+    room.roundKey = key;
+    room.panelOpen = false;
+    room.showInfo = false;
+    view.question = { id: round.verseId, hinted: false };
+    goTo(round.verseId);
+    return;
+  }
+  if (!round) view.question = null;
+  render();
+}
+
+function onRoomError(err) {
+  if (!state.live) return;
+  if (err.code === 'code-taken' && state.live.create && room.createTries++ < 3) {
+    startLive({ ...state.live, code: newCode() }); // someone has that code; pick another
+    return;
+  }
+  const messages = {
+    'not-found': `There's no room with the code ${state.live.code}. Check the code, or the room may have finished.`,
+  };
+  toast(messages[err.code] || err.message || 'Something went wrong with the room.');
+  if (['not-found', 'code-taken', 'bad-id', 'full', 'ended', 'bad-settings', 'bad-code', 'replaced', 'expired'].includes(err.code)) {
+    endLive();
+  }
+}
+
+function onRoomStatus(status) {
+  room.status = status;
+  if (state.live) renderRoom();
+}
+
+function newRoomFromDialog() {
+  if (!nameFrom($('challengeName'))) return;
+  const settings = {
+    label: rangesText(),
+    style: $('challengeForm').elements.roomStyle.value,
+    mode: { arabic: state.arabic, english: state.english, hideInfo: state.hideInfo },
+    ranges: state.ranges,
+  };
+  $('challengeDialog').close();
+  room.createTries = 0;
+  startLive({ code: newCode(), playerId: newId(), secret: newId(), create: settings });
+}
+
+function joinFromDialog() {
+  const input = $('joinCode');
+  const code = normaliseCode(input.value);
+  input.value = code;
+  input.setCustomValidity(CODE_PATTERN.test(code) ? '' : 'Room codes are 5 letters and numbers, like K7QPM');
+  if (!input.reportValidity()) return;
+  if (!nameFrom($('challengeName'))) return;
+  $('challengeDialog').close();
+  joinRoom(code);
+}
+
+function joinRoom(code) {
+  if (state.live?.code === code) return;
+  if (state.live) endLive();
+  startLive({ code, playerId: newId(), secret: newId() });
+}
+
+// Opening an invite link: "#room=K7QPM".
+function receiveRoomFromHash() {
+  const m = /^#room=([A-Za-z0-9]{5})$/.exec(location.hash);
+  if (!m) return;
+  history.replaceState(null, '', location.pathname + location.search);
+  const code = normaliseCode(m[1]);
+  if (!CODE_PATTERN.test(code)) {
+    toast('That room link is broken. Ask for it again.');
+    return;
+  }
+  if (state.live?.code === code) return;
+  for (const dialog of document.querySelectorAll('dialog[open]')) dialog.close();
+  $('joinTitle').textContent = `Join room ${code}`;
+  $('joinName').value = state.playerName;
+  $('joinName').setCustomValidity('');
+  $('joinDialog').dataset.code = code;
+  openDialog($('joinDialog'));
+}
+
+function playerMarks(snap, id) {
+  const rounds = snap.round ? [...snap.history, snap.round] : snap.history;
+  return rounds.map((r) => r.marks[id]).filter(Boolean).join('');
+}
+
+function hostName(snap) {
+  return snap.players.find((p) => p.id === snap.hostId)?.name || 'The host';
+}
+
+function renderRoom() {
+  const live = state.live;
+  const snap = room.snap;
+  const round = live && snap?.status === 'playing' ? snap.round : null;
+  $('roomBar').hidden = !live;
+  $('gradeHinted').hidden = true;
+  for (const id of ['gradeGot', 'gradeHinted', 'gradeMissed']) $(id).removeAttribute('aria-pressed');
+  if (!live) {
+    for (const id of ['roomPanel', 'roomTurn', 'roomScores', 'roomControls']) $(id).hidden = true;
+    $('card').hidden = false;
+    return;
+  }
+
+  // Bar
+  const online = snap ? snap.players.filter((p) => p.online).length : 0;
+  $('roomBarTitle').textContent = `Room ${live.code}`;
+  $('roomBarSub').textContent = room.status === 'open' && snap
+    ? `${online} here · ${snap.settings.label}`
+    : room.status === 'offline' ? 'Reconnecting…' : 'Connecting…';
+  $('roomBar').classList.toggle('offline', room.status !== 'open');
+
+  // Invite / lobby panel: always in the lobby and at the end, on request during a round
+  const panelOpen = !round || room.panelOpen;
+  $('roomPanel').hidden = !panelOpen;
+  $('roomBarButton').setAttribute('aria-expanded', String(panelOpen));
+  if (panelOpen) renderRoomPanel(snap, Boolean(round));
+  $('card').hidden = !round;
+
+  // Whose turn
+  const turns = snap?.settings.style === 'turns';
+  const reciter = round && turns ? snap.players.find((p) => p.id === round.reciter) : null;
+  const myTurn = Boolean(round && turns && round.reciter === snap.you);
+  const others = Boolean(snap?.players.some((p) => p.online && p.id !== snap.you));
+  $('roomTurn').hidden = !round || !turns;
+  if (round && turns) {
+    $('roomTurn').classList.toggle('watch', !myTurn);
+    $('roomTurn').textContent = myTurn
+      ? (others ? 'Your turn. Recite from here, and the others will mark you.' : 'Your turn. Recite from here.')
+      : `${reciter?.name || 'Someone'} is reciting. Mark how they did.`;
+  }
+
+  // Marking
+  const canMark = Boolean(round) && (!turns || !myTurn || !others);
+  $('grade').hidden = !canMark;
+  if (canMark) {
+    $('gradeHinted').hidden = !turns;
+    const mark = round.marks[turns ? round.reciter : snap.you];
+    const pressed = { g: 'gradeGot', h: turns ? 'gradeHinted' : 'gradeGot', m: 'gradeMissed' }[mark];
+    for (const id of ['gradeGot', 'gradeHinted', 'gradeMissed']) $(id).setAttribute('aria-pressed', String(id === pressed));
+  }
+
+  // Scores during a round
+  $('roomScores').hidden = !round;
+  if (round) renderRoomBoard($('roomBoard'), snap, { compact: true });
+
+  // Leading
+  $('roomControls').hidden = !round || !snap.canLead;
+}
+
+function renderRoomPanel(snap, duringRound) {
+  const live = state.live;
+  if (room.qrFor !== live.code) {
+    $('roomQr').replaceChildren(qrSvg(qrcode, roomLink(live.code)));
+    room.qrFor = live.code;
+  }
+  $('roomCode').textContent = live.code;
+  const ended = snap?.status === 'ended';
+  $('roomPanel').querySelector('.room-invite').hidden = ended;
+  $('roomPanelTitle').textContent = !snap ? 'Connecting to the room…'
+    : ended ? 'Room finished'
+    : duringRound ? 'Invite more people'
+    : snap.hostId === snap.you ? 'Your room' : `${hostName(snap)}'s room`;
+  $('roomInfo').textContent = snap
+    ? `${snap.settings.label} · ${snap.settings.style === 'turns' ? 'Take turns' : 'Everyone recites'} · ${capitalise(describeMode(snap.settings.mode))}`
+    : '';
+  if (snap) renderRoomBoard($('roomPanelBoard'), snap, { compact: !snap.history.length && !snap.round });
+  else $('roomPanelBoard').replaceChildren();
+  const waiting = $('roomWaiting');
+  const start = $('roomStartButton');
+  start.hidden = true;
+  waiting.textContent = '';
+  if (!snap) return;
+  if (ended) {
+    waiting.textContent = 'Thanks for playing.';
+    start.hidden = false;
+    start.textContent = 'Done';
+  } else if (!duringRound) {
+    if (snap.canLead) {
+      start.hidden = false;
+      start.textContent = 'Start';
+      waiting.textContent = snap.players.length < 2 ? 'Share the code, then start when everyone\'s in.' : '';
+    } else {
+      waiting.textContent = snap.hostAway ? `Waiting for ${hostName(snap)} to come back.` : `Waiting for ${hostName(snap)} to start.`;
+    }
+  }
+}
+
+function renderRoomBoard(list, snap, { compact = false } = {}) {
+  const round = snap.status === 'playing' ? snap.round : null;
+  const rows = ranked(snap.players.map((p) => ({ ...p, marks: playerMarks(snap, p.id) })));
+  list.classList.toggle('compact', compact);
+  list.replaceChildren(...rows.map((r) => {
+    const li = document.createElement('li');
+    if (r.id === snap.you) li.classList.add('me');
+    const rank = document.createElement('span');
+    rank.className = 'rank';
+    rank.textContent = r.marks ? 1 + rows.filter((o) => o.score > r.score).length : '·';
+    const name = document.createElement('span');
+    name.className = 'name';
+    const dot = document.createElement('span');
+    dot.className = r.online ? 'offline-dot' : 'offline-dot away';
+    dot.title = r.online ? 'Here' : 'Away';
+    name.append(dot, r.id === snap.you ? `${r.name} (you)` : r.name);
+    if (r.id === snap.hostId) name.append(' ★');
+    if (round) {
+      const status = document.createElement('span');
+      if (snap.settings.style === 'turns' && round.reciter === r.id) {
+        status.className = 'mark-status turn';
+        status.textContent = 'reciting';
+      } else if (snap.settings.style === 'all' && round.marks[r.id]) {
+        status.className = 'mark-status done';
+        status.textContent = '✓';
+      }
+      if (status.textContent) name.append(status);
+    }
+    const scoreEl = document.createElement('span');
+    scoreEl.className = 'score';
+    scoreEl.textContent = r.marks ? formatScore(r.marks) : '–';
+    li.append(rank, name, scoreEl, markDots(r.marks));
+    return li;
+  }));
+}
+
+function roomGrade(result) {
+  const snap = room.snap;
+  if (!snap?.round || snap.status !== 'playing') return;
+  const mark = result === 'missed' ? 'm'
+    : result === 'hinted' || (snap.settings.style === 'all' && view.question?.hinted) ? 'h'
+    : 'g';
+  if (!room.conn?.send({ type: 'mark', mark })) toast('Not connected right now. Trying again…');
+}
+
+function roomNext() {
+  const snap = room.snap;
+  if (!snap?.canLead) return;
+  const used = new Set(snap.history.map((h) => h.verseId));
+  if (snap.round) used.add(snap.round.verseId);
+  let { id, exhausted } = pickRandom(quran, snap.settings.ranges, { exclude: used });
+  if (exhausted) {
+    toast('Every ayah in range has come up. Starting again.');
+    ({ id } = pickRandom(quran, snap.settings.ranges, { exclude: new Set(snap.round ? [snap.round.verseId] : []) }));
+  }
+  if (!room.conn?.send({ type: 'next', verseId: id })) toast('Not connected right now. Trying again…');
+}
+
+// Two taps for anything that ends the room for you.
+function confirmTap(button, label, action) {
+  if (button.dataset.armed && Date.now() - Number(button.dataset.armed) < 3000) {
+    delete button.dataset.armed;
+    button.textContent = label;
+    action();
+    return;
+  }
+  button.dataset.armed = String(Date.now());
+  button.textContent = 'Tap again to confirm';
+  setTimeout(() => {
+    if (button.dataset.armed) { delete button.dataset.armed; button.textContent = label; }
+  }, 3000);
+}
+
+function leaveRoom() {
+  room.conn?.send({ type: 'leave' });
+  endLive();
+  toast('You left the room.');
+}
+
+async function shareRoom() {
+  const code = state.live?.code;
+  if (!code) return;
+  const url = roomLink(code);
+  const text = `Join my Hasbuk room: ${code}`;
+  if (navigator.share) {
+    try {
+      await navigator.share({ title: 'Hasbuk room', text, url });
+      return;
+    } catch (err) {
+      if (err.name === 'AbortError') return;
+    }
+  }
+  await copyRoom();
+}
+
+async function copyRoom() {
+  const code = state.live?.code;
+  if (!code) return;
+  const url = roomLink(code);
+  try {
+    await navigator.clipboard.writeText(`Join my Hasbuk room: ${code}\n${url}`);
+    toast('Link copied. Paste it to your friends.');
+  } catch {
+    window.prompt('Copy this link and send it to your friends:', url);
+  }
+}
+
+function setupRooms() {
+  for (const input of $('challengeForm').querySelectorAll('input[name="friendsMode"], input[name="roomStyle"]')) {
+    input.addEventListener('change', showFriendsMode);
+  }
+  $('createRoomButton').addEventListener('click', newRoomFromDialog);
+  $('joinRoomButton').addEventListener('click', joinFromDialog);
+  $('joinStartButton').addEventListener('click', () => {
+    if (!nameFrom($('joinName'))) return;
+    $('joinDialog').close();
+    joinRoom($('joinDialog').dataset.code);
+  });
+  $('roomBarButton').addEventListener('click', () => {
+    if (!room.snap?.round || room.snap.status !== 'playing') return;
+    room.panelOpen = !room.panelOpen;
+    renderRoom();
+  });
+  $('leaveRoomButton').addEventListener('click', (e) => confirmTap(e.currentTarget, 'Leave', leaveRoom));
+  $('roomStartButton').addEventListener('click', () => {
+    if (room.snap?.status === 'ended') endLive();
+    else roomNext();
+  });
+  $('roomNextButton').addEventListener('click', roomNext);
+  $('roomEndButton').addEventListener('click', (e) => confirmTap(e.currentTarget, 'End room', () => room.conn?.send({ type: 'end' })));
+  $('roomShareButton').addEventListener('click', shareRoom);
+  $('roomCopyButton').addEventListener('click', copyRoom);
 }
 
 // ---------------------------------------------------------------- ranges UI
@@ -927,11 +1369,12 @@ function setupControls() {
   $('english').addEventListener('click', toggleEnglish);
   $('info').addEventListener('click', toggleInfo);
   $('gradeGot').addEventListener('click', () => grade('got'));
+  $('gradeHinted').addEventListener('click', () => grade('hinted'));
   $('gradeMissed').addEventListener('click', () => grade('missed'));
   $('lastPickButton').addEventListener('click', lastPick);
   $('resetSessionButton').addEventListener('click', resetSession);
   attachSwipe($('card'), (direction) => {
-    if (state.run) return false; // a challenge stays on its ayah
+    if (state.run || state.live) return false; // a challenge or room stays on its ayah
     return direction === 'left' ? swipeLeft() : swipeRight();
   });
 
@@ -954,7 +1397,7 @@ function setupControls() {
       m: () => grade('missed'),
     };
     if (key === ' ' && e.target.closest('button')) return; // let Space press the focused button
-    if (state.run && ['arrowright', 'arrowleft', ' ', 'r'].includes(key)) return;
+    if ((state.run || state.live) && ['arrowright', 'arrowleft', ' ', 'r'].includes(key)) return;
     if (actions[key]) {
       e.preventDefault();
       actions[key]();
@@ -990,13 +1433,16 @@ async function start() {
   renderRangesSummary();
   if (state.run) showQuestion(); // pick up a challenge where it was left
   else goTo(view.id);
+  if (state.live) startLive(state.live); // and rejoin a live room
   receiveFromHash();
+  receiveRoomFromHash();
 }
 
 applyAppearance();
 setupDialogs();
 setupControls();
 setupChallenges();
+setupRooms();
 $('retryButton').addEventListener('click', start);
 start();
 

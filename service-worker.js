@@ -6,7 +6,7 @@
 // while the app still works with no connection.
 //
 // Bump VERSION whenever the list of shell files changes.
-const VERSION = 'hasbuk-v4';
+const VERSION = 'hasbuk-v5';
 const NETWORK_TIMEOUT_MS = 4000;
 
 const SHELL = [
@@ -21,6 +21,8 @@ const SHELL = [
   'js/gestures.js',
   'js/mushaf.js',
   'js/challenge.js',
+  'js/room.js',
+  'js/vendor/qrcode.js',
   'data/quran.min.json',
   'fonts/UthmanicHafs1Ver18.woff2',
   'fonts/surah-header.woff2',

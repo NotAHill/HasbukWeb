@@ -18,6 +18,7 @@ export const DEFAULTS = {
   playerName: '',
   run: null, // challenge being played: { challenge, index, marks, hideInfo }
   challenges: [], // recent challenges, newest first: { challenge, me } (me: my result's name)
+  live: null, // live room I'm in: { code, playerId, secret, create? (settings, until the room exists) }
   ranges: [],
   lastVerse: 1,
   session: { correct: 0, hinted: 0, missed: 0, streak: 0, best: 0, seen: [], picks: [] },
