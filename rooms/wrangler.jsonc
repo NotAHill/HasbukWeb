@@ -1,0 +1,19 @@
+{
+  // Hasbuk live rooms. Deploy with `npm run deploy` from this folder.
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "hasbuk-rooms",
+  "main": "src/index.js",
+  "compatibility_date": "2026-09-01",
+  "durable_objects": {
+    "bindings": [{ "name": "ROOMS", "class_name": "Room" }]
+  },
+  // SQLite-backed Durable Objects work on the Workers free plan.
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Room"] }],
+  "vars": {
+    // Pages allowed to open rooms (localhost is always allowed, for development).
+    "ALLOWED_ORIGINS": "https://hasbuk-web.vercel.app",
+    // Vercel preview deployments of the app.
+    "ALLOWED_ORIGIN_PATTERN": "^https://hasbuk-web-[a-z0-9-]+\\.vercel\\.app$"
+  },
+  "observability": { "enabled": true }
+}
